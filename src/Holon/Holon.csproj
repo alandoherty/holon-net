@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <Version>0.1.0</Version>
+    <Authors>Alan Doherty</Authors>
+    <Company>BattleCrate Ltd</Company>
+    <Description>A minimal service and event bus with additional support for RPC</Description>
+    <Copyright>BattleCrate Ltd 2018</Copyright>
+    <PackageProjectUrl>https://battlecrate.co.uk</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/battlecrate/core-holon-net</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <AssemblyVersion>0.0.1.0</AssemblyVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="11.0.2" />
+    <PackageReference Include="protobuf-net" Version="2.3.13" />
+    <PackageReference Include="RabbitMQ.Client" Version="5.1.0" />
+    <PackageReference Include="System.Reflection.DispatchProxy" Version="4.5.1" />
+    <PackageReference Include="System.Threading.Tasks.Dataflow" Version="4.9.0" />
+  </ItemGroup>
+
+</Project>

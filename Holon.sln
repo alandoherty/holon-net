@@ -1,0 +1,36 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.27703.2035
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Holon", "src\Holon\Holon.csproj", "{D7206F8E-3B85-450D-8BAB-8D7F4617000E}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Examples", "Examples", "{AA1ED25C-9D4B-4ED0-8ECA-A79B5002E10B}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Example.General", "samples\Example.General\Example.General.csproj", "{0E7202F8-C346-4BBA-BB76-58183EB01FD9}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D7206F8E-3B85-450D-8BAB-8D7F4617000E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D7206F8E-3B85-450D-8BAB-8D7F4617000E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D7206F8E-3B85-450D-8BAB-8D7F4617000E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D7206F8E-3B85-450D-8BAB-8D7F4617000E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0E7202F8-C346-4BBA-BB76-58183EB01FD9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0E7202F8-C346-4BBA-BB76-58183EB01FD9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0E7202F8-C346-4BBA-BB76-58183EB01FD9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0E7202F8-C346-4BBA-BB76-58183EB01FD9}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{0E7202F8-C346-4BBA-BB76-58183EB01FD9} = {AA1ED25C-9D4B-4ED0-8ECA-A79B5002E10B}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {C0E3A751-83D4-4A02-84B8-FDEEB71101F5}
+	EndGlobalSection
+EndGlobal
