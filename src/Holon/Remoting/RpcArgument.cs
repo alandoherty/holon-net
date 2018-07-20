@@ -118,6 +118,8 @@ namespace Holon.Remoting
                 return "decimal";
             else if (type == typeof(float))
                 return "float";
+            else if (type == typeof(double))
+                return "float";
             else if (type == typeof(bool))
                 return "bool";
             else if (type == typeof(void))
@@ -126,6 +128,10 @@ namespace Holon.Remoting
                 return "guid";
             else if (type == typeof(ServiceAddress))
                 return "address";
+            else if (type == typeof(DateTime))
+                return "datetime";
+            else if (type == typeof(byte[]))
+                return "bytes";
             else
                 return "serialized";
         }
@@ -159,6 +165,8 @@ namespace Holon.Remoting
                     return typeof(decimal);
                 case "float":
                     return typeof(float);
+                case "double":
+                    return typeof(double);
                 case "bool":
                     return typeof(bool);
                 case "void":
@@ -167,6 +175,10 @@ namespace Holon.Remoting
                     return typeof(Guid);
                 case "address":
                     return typeof(ServiceAddress);
+                case "datetime":
+                    return typeof(DateTime);
+                case "bytes":
+                    return typeof(byte[]);
                 default:
                     return typeof(object);
             }
