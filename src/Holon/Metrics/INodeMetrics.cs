@@ -17,16 +17,6 @@ namespace Holon.Metrics
         /// </summary>
         [RpcOperation]
         Task<MetricInformation[]> Metrics { get; }
-
-        /// <summary>
-        /// Gets the history for a metric.
-        /// </summary>
-        /// <param name="id">The identifier.</param>
-        /// <param name="amount">The amount of datapoints to request.</param>
-        /// <note>The amount units is the interval for measurement, currently 1 minute. You will always get the exact amount requested.</note>
-        /// <returns></returns>
-        [RpcOperation]
-        Task<HistoricalMetricInformation> GetHistoricalMetric(string id, int amount=60);
         
         /// <summary>
         /// Gets a single metric.

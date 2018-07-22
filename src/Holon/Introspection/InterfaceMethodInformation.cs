@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using Holon.Remoting;
+using ProtoBuf;
 
 namespace Holon.Introspection
 {
@@ -9,28 +10,33 @@ namespace Holon.Introspection
     /// Represents an interface method fopr introspection.
     /// </summary>
     [Serializable]
+    [ProtoContract]
     public class InterfaceMethodInformation
     {
         #region Properties
         /// <summary>
         /// Gets or sets the method name.
         /// </summary>
+        [ProtoMember(1, IsRequired = true)]
         public string Name { get; set; }
 
         /// <summary>
         /// Gets or sets if the method does not provide a reply.
         /// </summary>
+        [ProtoMember(2, IsRequired = true)]
         public bool NoReply { get; set; }
 
         /// <summary>
         /// Gets or sets the available arguments.
         /// </summary>
+        [ProtoMember(3, IsRequired = true)]
         public InterfaceArgumentInformation[] Arguments { get; set; }
 
         /// <summary>
         /// Gets or sets the return type.
         /// Note that this does not include the Task generic.
         /// </summary>
+        [ProtoMember(4, IsRequired = true)]
         public string ReturnType { get; set; }
         #endregion
 

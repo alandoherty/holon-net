@@ -40,8 +40,8 @@ namespace Holon
         private Service _nodeService;
 
         internal static Dictionary<string, string> DefaultTags = new Dictionary<string, string>() {
-            { "RPCVersion", Remoting.RpcHeader.HEADER_VERSION },
-            { "RPCSerializers", "xml,pbuf" }
+            { "RPCVersion", RpcHeader.HEADER_VERSION },
+            { "RPCSerializers", "pbuf,xml" }
         };
         #endregion
 

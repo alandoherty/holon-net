@@ -102,7 +102,7 @@ namespace Holon.Events
                         throw new NotSupportedException("Event serializer not supported");
 
                     // post
-                    _inBuffer.Post((TData)serializer.DeserializeEvent(envelope.Body, typeof(TData)).Data);
+                    _inBuffer.Post(serializer.DeserializeEvent(envelope.Body, typeof(TData)).Deserialize<TData>());
 #if DEBUG
                 } catch (Exception ex) {
                     Console.WriteLine("event", "failed to deserialize event: {0}", ex.Message);

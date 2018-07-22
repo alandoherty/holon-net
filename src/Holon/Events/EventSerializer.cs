@@ -12,7 +12,7 @@ namespace Holon.Events
     {
         #region Fields
         public static readonly Dictionary<string, IEventSerializer> Serializers = new Dictionary<string, IEventSerializer>(StringComparer.CurrentCultureIgnoreCase) {
-            { XmlEventSerializer.NAME, new XmlEventSerializer() }
+            { ProtobufEventSerializer.SerializerName, new ProtobufEventSerializer() }
         };
         #endregion
     }

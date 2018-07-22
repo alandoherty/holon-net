@@ -1,4 +1,5 @@
-﻿using System;
+﻿using ProtoBuf;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
@@ -10,21 +11,25 @@ namespace Holon.Introspection
     /// </summary>
     [Serializable]
     [DebuggerDisplay("{Name}")]
+    [ProtoContract]
     public class InterfaceInformation
     {
         /// <summary>
         /// Gets or sets the interface name.
         /// </summary>
+        [ProtoMember(1, IsRequired = true)]
         public string Name { get; set; }
-        
+
         /// <summary>
         /// Gets or sets the available methods.
         /// </summary>
+        [ProtoMember(2, IsRequired = true)]
         public InterfaceMethodInformation[] Methods { get; set; }
 
         /// <summary>
         /// Gets or sets the available properties.
         /// </summary>
+        [ProtoMember(3, IsRequired = true)]
         public InterfacePropertyInformation[] Properties { get; set; }
         
         /// <summary>

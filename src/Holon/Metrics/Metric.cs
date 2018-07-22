@@ -42,33 +42,15 @@ namespace Holon.Metrics
         /// <param name="dateTime">The date/time.</param>
         /// <param name="val">The value.</param>
         void Submit(DateTime dateTime, object val);
-
-        /// <summary>
-        /// Gets all available metric history.
-        /// </summary>
-        /// <returns></returns>
-        IMetricValue[] GetHistory();
-        
-        /// <summary>
-        /// Gets metric history up to a maximum amount.
-        /// </summary>
-        /// <param name="maxValues">The maximum values.</param>
-        /// <returns></returns>
-        IMetricValue[] GetHistory(int maxValues);
     }
 
     /// <summary>
     /// Represents a metric type.
     /// </summary>
     /// <typeparam name="TValue">The metric value type.</typeparam>
-    public class Metric<TValue> : IMetric
+    public class Metric<TValue> : IMetric where TValue : struct
     {
-        #region Constants
-        private const int MaxHistoricalData = 6 * 60;
-        #endregion
-
         #region Fields
-        private Queue<MetricValue<TValue>> _values = new Queue<MetricValue<TValue>>();
         private MetricValue<TValue> _value = default(MetricValue<TValue>);
         private string _name;
         private string _identifier;
@@ -132,39 +114,10 @@ namespace Holon.Metrics
 
         #region Methods
         /// <summary>
-        /// Clears all metric history.
+        /// Clears all metric data.
         /// </summary>
         public void Clear() {
             _value = default(MetricValue<TValue>);
-            _values = new Queue<MetricValue<TValue>>();
-        }
-
-        /// <summary>
-        /// Gets all available history.
-        /// </summary>
-        /// <returns>The historical metric data.</returns>
-        public MetricValue<TValue>[] GetHistory() {
-            lock(_values) {
-                return _values.ToArray();
-            }
-        }
-
-        /// <summary>
-        /// Gets all available history.
-        /// </summary>
-        /// <param name="maxValues">The maximum number of values to retrieve.</param>
-        /// <returns>The historical metric data.</returns>
-        public MetricValue<TValue>[] GetHistory(int maxValues) {
-            lock (_values) {
-                // get values
-                MetricValue<TValue>[] values = _values.ToArray();
-
-                if (values.Length <= maxValues)
-                    return values;
-
-                // skip some data
-                return values.Skip(values.Length - maxValues).ToArray();
-            }
         }
 
         /// <summary>
@@ -181,30 +134,6 @@ namespace Holon.Metrics
         /// <param name="metricVal">The metric value.</param>
         public void Submit(MetricValue<TValue> metricVal) {
             _value = metricVal;
-
-            lock (_values) {
-                _values.Enqueue(metricVal);
-
-                if (_values.Count > MaxHistoricalData)
-                    _values.Dequeue();
-            }
-        }
-
-        /// <summary>
-        /// Gets all available history.
-        /// </summary>
-        /// <returns></returns>
-        IMetricValue[] IMetric.GetHistory() {
-            return GetHistory().Cast<IMetricValue>().ToArray();
-        }
-
-        /// <summary>
-        /// Gets history up to a maximum amount.
-        /// </summary>
-        /// <param name="maxValues">The maximum mumber of values to retrieve.</param>
-        /// <returns></returns>
-        IMetricValue[] IMetric.GetHistory(int maxValues) {
-            return GetHistory(maxValues).Cast<IMetricValue>().ToArray();
         }
 
         void IMetric.Submit(object val) {
