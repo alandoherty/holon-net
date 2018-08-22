@@ -21,7 +21,7 @@ namespace Holon.Remoting
         /// <param name="address">The address.</param>
         /// <returns></returns>
         public static IInterfaceQuery001 QueryProxy(this Node node, string address) {
-            return GetRpcQuery(node, new ServiceAddress(address));
+            return QueryProxy(node, new ServiceAddress(address));
         }
 
         /// <summary>

@@ -28,12 +28,12 @@ namespace Example.General
     interface ITest001
     {
         [RpcOperation]
-        Task Test();
+        Task Test(string wow);
     }
 
     class Test001 : ITest001
     {
-        public async Task Test() {
+        public async Task Test(string wow) {
             Console.WriteLine("Test");
         }
     }
