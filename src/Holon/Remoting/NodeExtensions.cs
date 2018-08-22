@@ -20,18 +20,8 @@ namespace Holon.Remoting
         /// <param name="node">The node.</param>
         /// <param name="address">The address.</param>
         /// <returns></returns>
-        public static IInterfaceQuery001 GetRpcQuery(this Node node, string address) {
+        public static IInterfaceQuery001 QueryProxy(this Node node, string address) {
             return GetRpcQuery(node, new ServiceAddress(address));
-        }
-
-        /// <summary>
-        /// Gets the metrics proxy for a node.
-        /// </summary>
-        /// <param name="node">The node.</param>
-        /// <param name="nodeUuid">The target node.</param>
-        /// <returns></returns>
-        public static INodeMetrics001 GetRpcMetrics(this Node node, Guid nodeUuid) {
-            return GetRpcProxy<INodeMetrics001>(node, new ServiceAddress(string.Format("node:{0}", nodeUuid)));
         }
 
         /// <summary>
@@ -40,8 +30,8 @@ namespace Holon.Remoting
         /// <param name="node">The node.</param>
         /// <param name="address">The address.</param>
         /// <returns></returns>
-        public static IInterfaceQuery001 GetRpcQuery(this Node node, ServiceAddress address) {
-            return GetRpcProxy<IInterfaceQuery001>(node, address);
+        public static IInterfaceQuery001 QueryProxy(this Node node, ServiceAddress address) {
+            return Proxy<IInterfaceQuery001>(node, address);
         }
 
         /// <summary>
@@ -51,8 +41,8 @@ namespace Holon.Remoting
         /// <param name="node">The node.</param>
         /// <param name="address">The service address.</param>
         /// <returns></returns>
-        public static T GetRpcProxy<T>(this Node node, string address) {
-            return GetRpcProxy<T>(node, new ServiceAddress(address));
+        public static T Proxy<T>(this Node node, string address) {
+            return Proxy<T>(node, new ServiceAddress(address));
         }
 
         /// <summary>
@@ -62,7 +52,7 @@ namespace Holon.Remoting
         /// <param name="node">The node.</param>
         /// <param name="address">The service address.</param>
         /// <returns></returns>
-        public static T GetRpcProxy<T>(this Node node, ServiceAddress address) {
+        public static T Proxy<T>(this Node node, ServiceAddress address) {
             // check type is interface
             TypeInfo typeInfo = typeof(T).GetTypeInfo();
 
@@ -93,7 +83,7 @@ namespace Holon.Remoting
         /// <param name="address">The service address.</param>
         /// <param name="interface">The interface.</param>
         /// <returns></returns>
-        public static dynamic GetRpcProxy(this Node node, ServiceAddress address, string @interface) {
+        public static dynamic DynamicProxy(this Node node, ServiceAddress address, string @interface) {
             throw new NotImplementedException();
         }
         #endregion

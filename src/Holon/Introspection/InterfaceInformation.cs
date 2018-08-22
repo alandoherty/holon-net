@@ -21,17 +21,11 @@ namespace Holon.Introspection
         public string Name { get; set; }
 
         /// <summary>
-        /// Gets or sets the available methods.
+        /// Gets or sets the available operations.
         /// </summary>
         [ProtoMember(2, IsRequired = true)]
-        public InterfaceMethodInformation[] Methods { get; set; }
+        public InterfaceOperationInformation[] Operations { get; set; }
 
-        /// <summary>
-        /// Gets or sets the available properties.
-        /// </summary>
-        [ProtoMember(3, IsRequired = true)]
-        public InterfacePropertyInformation[] Properties { get; set; }
-        
         /// <summary>
         /// Gets the string representation of the interface information.
         /// </summary>
@@ -42,18 +36,9 @@ namespace Holon.Introspection
             sb.Append(Name);
             sb.AppendLine(" {");
 
-            foreach(InterfaceMethodInformation method in Methods) {
+            foreach(InterfaceOperationInformation operation in Operations) {
                 sb.Append("\t");
-                sb.Append(method.ToString());
-                sb.AppendLine(";");
-            }
-
-            if (Properties.Length > 0)
-                sb.AppendLine();
-
-            foreach (InterfacePropertyInformation property in Properties) {
-                sb.Append("\t");
-                sb.AppendLine(property.ToString());
+                sb.Append(operation.ToString());
                 sb.AppendLine(";");
             }
 

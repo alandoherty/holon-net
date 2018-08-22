@@ -11,7 +11,7 @@ namespace Holon.Introspection
     /// </summary>
     [Serializable]
     [ProtoContract]
-    public class InterfaceMethodInformation
+    public class InterfaceOperationInformation
     {
         #region Properties
         /// <summary>
@@ -33,16 +33,22 @@ namespace Holon.Introspection
         public InterfaceArgumentInformation[] Arguments { get; set; }
 
         /// <summary>
+        /// Gets or sets the potential errors.
+        /// </summary>
+        [ProtoMember(4, IsRequired = true)]
+        public string[] Throws { get; set; }
+
+        /// <summary>
         /// Gets or sets the return type.
         /// Note that this does not include the Task generic.
         /// </summary>
-        [ProtoMember(4, IsRequired = true)]
+        [ProtoMember(5, IsRequired = true)]
         public string ReturnType { get; set; }
         #endregion
 
         #region Methods
         /// <summary>
-        /// Gets the string representation of the method information.
+        /// Gets the string representation of the operation information.
         /// </summary>
         /// <returns></returns>
         public override string ToString() {

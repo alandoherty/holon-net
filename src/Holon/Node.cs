@@ -22,7 +22,6 @@ namespace Holon
     {
         #region Fields
         private Guid _uuid;
-        private List<UntrackedMetric> _metrics = new List<UntrackedMetric>();
 
         private NodeConfiguration _configuration;
         private Broker _broker;
@@ -60,17 +59,6 @@ namespace Holon
         #endregion
 
         #region Properties
-        /// <summary>
-        /// Gets all the declared metrics.
-        /// </summary>
-        public IMetric[] Metrics {
-            get {
-                lock (_metrics) {
-                    return _metrics.Select(m => m.Metric).ToArray();
-                }
-            }
-        }
-
         /// <summary>
         /// Gets the underlying introspection service.
         /// </summary>
@@ -372,17 +360,6 @@ namespace Holon
         /// </summary>
         /// <returns></returns>
         internal async Task SetupAsync() {
-            if (_configuration.Metrics) {
-                // declare metrics
-                DeclareMetric("services.count", "Services Count", () => _services.Count);
-                DeclareMetric("mem.usage", "Memory Usage", () => GC.GetTotalMemory(false));
-                DeclareMetric("mem.total", "Memory Total", () => Process.GetCurrentProcess().PrivateMemorySize64);
-                DeclareMetric("thread.count", "Thread Count", () => Process.GetCurrentProcess().Threads.Count);
-
-                // start loop
-                MetricLoop();
-            }
-
             // add shutdown handler
             _broker.Shutdown += async delegate (object s, BrokerShutdownEventArgs e) {
                 Debug.WriteLine(":Reconnect -> Reconnecting");
@@ -435,14 +412,7 @@ namespace Holon
 
             // setup service
             if (_nodeService == null) {
-                if (_configuration.Metrics) {
-                    _nodeService = await AttachAsync(string.Format("node:{0}", _uuid), ServiceType.Singleton, ServiceExecution.Parallel, RpcBehaviour.BindAll(
-                        new Type[] { typeof(INodeQuery001), typeof(INodeMetrics001) },
-                        new object[] { new NodeQueryImpl(this), new NodeMetricsImpl(this) }
-                    ));
-                } else {
-                    _nodeService = await AttachAsync(string.Format("node:{0}", _uuid), ServiceType.Singleton, ServiceExecution.Parallel, RpcBehaviour.BindOne<INodeQuery001>(new NodeQueryImpl(this)));
-                }
+                _nodeService = await AttachAsync(string.Format("node:{0}", _uuid), ServiceType.Singleton, ServiceExecution.Parallel, RpcBehaviour.BindOne<INodeQuery001>(new NodeQueryImpl(this)));
             }
 
             // start reply processor
@@ -680,8 +650,8 @@ namespace Holon
                 await DeclareEventAsync<TData>(addr);
 
             // serialize
-            XmlEventSerializer serializer = new XmlEventSerializer();
-            byte[] body = serializer.SerializeEvent(new Event(addr.Name, data));
+            ProtobufEventSerializer serializer = new ProtobufEventSerializer();
+            byte[] body = serializer.SerializeEvent(new Event(addr.Name, null/*data*/));
 
             // send event
             try {
@@ -740,145 +710,6 @@ namespace Holon
         #endregion
 
         #region Metrics
-        private async void MetricLoop() {
-            while (!_disposed) {
-                // calculate next run time
-                TimeSpan timeOfDay = DateTime.Now.TimeOfDay;
-                TimeSpan nextMinute = TimeSpan.FromMinutes(Math.Ceiling(timeOfDay.TotalMinutes));
-                TimeSpan delta = (nextMinute - timeOfDay);
-
-                // wait until next minute
-                await (Task.Delay(delta).ConfigureAwait(false));
-
-                // get current time and remove any seconds
-                DateTime currentTime = DateTime.UtcNow;
-
-                if (currentTime.Second > 0)
-                    currentTime = new DateTime(currentTime.Year, currentTime.Month, currentTime.Day, currentTime.Hour, currentTime.Minute, 0);
-
-                // update all trackable metrics
-                lock(_metrics) {
-                    foreach(UntrackedMetric metric in _metrics) {
-                        try {
-                            if (metric.IsTracked)
-                                metric.Track(currentTime);
-                        } catch(Exception ex) {
-                            // submit empty metric for failure
-                            metric.Metric.Submit(currentTime, metric.Metric.DefaultValue);
-
-                            // log
-                            Console.WriteLine("metric", "exception while tracking {0}: {1}", metric.Metric.Identifier, ex.ToString());
-                        }
-                    }
-                }
-            }
-        }
-
-        /// <summary>
-        /// Gets a metric by identifier.
-        /// </summary>
-        /// <param name="identifier">The identifier.</param>
-        /// <returns>The metric.</returns>
-        public IMetric GetMetric(string identifier) {
-            lock(_metrics) {
-                return _metrics.Single(m => m.Metric.Identifier.Equals(identifier, StringComparison.CurrentCultureIgnoreCase)).Metric;
-            }
-        }
-
-        /// <summary>
-        /// Trys to get a metric by identifier.
-        /// </summary>
-        /// <param name="identifier">The identifier.</param>
-        /// <param name="metric">The output metric.</param>
-        /// <returns>If the metric was retrieved successfully.</returns>
-        public bool TryGetMetric(string identifier, out IMetric metric) {
-            lock (_metrics) {
-                // get metric
-                UntrackedMetric trackedMetric = _metrics.SingleOrDefault(m => m.Metric.Identifier.Equals(identifier, StringComparison.CurrentCultureIgnoreCase));
-
-                if (trackedMetric != null)
-                    metric = trackedMetric.Metric;
-                else
-                    metric = null;
-
-                return trackedMetric != null;
-            }
-        }
-
-        /// <summary>
-        /// Declares a user-tracked metric.
-        /// </summary>
-        /// <param name="metric">The metric.</param>
-        public void DeclareMetric(IMetric metric) {
-            lock(_metrics) {
-                _metrics.Add(new UntrackedMetric() {
-                    Metric = metric
-                });
-            }
-        }
-
-        /// <summary>
-        /// Declares a metric.
-        /// </summary>
-        /// <typeparam name="TValue">The metric value type.</typeparam>
-        /// <param name="identifier">The identifier.</param>
-        /// <param name="name">The name.</param>
-        /// <param name="submitFunc">The function to resolve the metric for submitting data.</param>
-        /// <returns>The declared metric.</returns>
-        public Metric<TValue> DeclareMetric<TValue>(string identifier, string name, Func<TValue> submitFunc) {
-            Metric<TValue> metric = new Metric<TValue>(identifier, name);
-
-            lock (_metrics) {
-                _metrics.Add(new TrackedMetric<TValue>() {
-                    Metric =  metric,
-                    Function = submitFunc
-                });
-            }
-
-            return metric;
-        }
-
-        /// <summary>
-        /// Provides a wrapper for metrics that are user tracked.
-        /// </summary>
-        class UntrackedMetric
-        {
-            public IMetric Metric { get; set; }
-            public virtual bool IsTracked {
-                get {
-                    return false;
-                }
-            }
-            public virtual void Track(DateTime currentTime) {
-                throw new InvalidOperationException("Cannot submit untracked metric");
-            }
-        }
-
-        /// <summary>
-        /// Provides a wrapper for metrics that need to be tracked.
-        /// </summary>
-        /// <typeparam name="TMetric">The metric value type.</typeparam>
-        class TrackedMetric<TMetric> : UntrackedMetric
-        { 
-            public Func<TMetric> Function { get; set; }
-
-            public override bool IsTracked {
-                get {
-                    return true;
-                }
-            }
-
-            public override void Track(DateTime currentTime) {
-                // get real metric
-                Metric<TMetric> metric = (Metric<TMetric>)Metric;
-
-                // get data
-                TMetric val = Function();
-
-                // submit
-                metric.Submit(new MetricValue<TMetric>(currentTime, val));
-            }
-        }
         #endregion
 
         #region Constructors

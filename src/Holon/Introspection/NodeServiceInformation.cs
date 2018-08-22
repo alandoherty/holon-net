@@ -24,5 +24,11 @@ namespace Holon.Introspection
         /// </summary>
         [ProtoMember(2, IsRequired = true)]
         public ServiceType Type { get; set; }
+
+        /// <summary>
+        /// Gets or sets the execution type.
+        /// </summary>
+        [ProtoMember(3, IsRequired = true)]
+        public ServiceExecution Execution { get; set; }
     }
 }

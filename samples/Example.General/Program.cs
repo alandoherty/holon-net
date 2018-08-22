@@ -24,6 +24,20 @@ namespace Example.General
         public int wow = 432;
     }
 
+    [RpcContract]
+    interface ITest001
+    {
+        [RpcOperation]
+        Task Test();
+    }
+
+    class Test001 : ITest001
+    {
+        public async Task Test() {
+            Console.WriteLine("Test");
+        }
+    }
+
     class Program
     {
         static void Main(string[] args) => AsyncMain(args).Wait();
@@ -34,6 +48,11 @@ namespace Example.General
 
             // attach node
             Node node = await ctx.AttachAsync();
+
+            Service service = await node.AttachAsync("test:test", ServiceType.Balanced, ServiceExecution.Parallel, RpcBehaviour.BindOne<ITest001>(new Test001()));
+
+            ITest001 test = node.Proxy<ITest001>("test:test");
+            await test.Test();
 
             await Task.Delay(50000);
         }

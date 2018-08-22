@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFramework>netstandard1.6</TargetFramework>
     <Version>0.1.0</Version>
     <Authors>Alan Doherty</Authors>
     <Company>BattleCrate Ltd</Company>
@@ -13,9 +13,17 @@
     <AssemblyVersion>0.0.1.0</AssemblyVersion>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <DocumentationFile>bin\Debug\netstandard2.0\Holon.xml</DocumentationFile>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <DocumentationFile>bin\Release\netstandard2.0\Holon.xml</DocumentationFile>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="11.0.2" />
-    <PackageReference Include="protobuf-net" Version="2.3.13" />
+    <PackageReference Include="protobuf-net" Version="2.3.17" />
     <PackageReference Include="RabbitMQ.Client" Version="5.1.0" />
     <PackageReference Include="System.Reflection.DispatchProxy" Version="4.5.1" />
     <PackageReference Include="System.Threading.Tasks.Dataflow" Version="4.9.0" />

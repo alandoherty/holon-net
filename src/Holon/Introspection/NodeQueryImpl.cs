@@ -26,7 +26,8 @@ namespace Holon.Introspection
         public Task<NodeServiceInformation[]> GetServices() {
             return Task.FromResult(_node.Services.Select((s) => new NodeServiceInformation() {
                 Address = s.Address.ToString(),
-                Type = s.Type
+                Type = s.Type,
+                Execution = s.Execution
             }).ToArray());
         }
 

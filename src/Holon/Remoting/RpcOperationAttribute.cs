@@ -5,9 +5,9 @@ using System.Text;
 namespace Holon.Remoting
 {
     /// <summary>
-    /// Defines the target property or method as a valid RPC operation.
+    /// Defines the target method as a valid RPC operation.
     /// </summary>
-    [AttributeUsage(AttributeTargets.Method | AttributeTargets.Property, AllowMultiple = false)]
+    [AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
     public class RpcOperationAttribute : Attribute
     {
         /// <summary>

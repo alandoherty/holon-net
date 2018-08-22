@@ -16,6 +16,8 @@ namespace Holon.Remoting
     public class RpcBehaviour : IAsyncServiceBehaviour
     {
         #region Fields
+        internal static string[] StandardErrors = new string[] { "InterfaceNotFound", "OperationNotFound", "ArgumentRequired", "ArgumentMissing" };
+
         private Dictionary<string, Binding> _behaviours = new Dictionary<string, Binding>(StringComparer.CurrentCultureIgnoreCase);
         #endregion
 
@@ -85,9 +87,9 @@ namespace Holon.Remoting
                 try {
                     req = serializer.DeserializeRequest(envelope.Body, (i, o) => RpcArgument.FromMember(GetMember(i, o)));
                 } catch (KeyNotFoundException) {
-                    res = new RpcResponse("NotFound", "The interface or operation could not be found");
+                    res = new RpcResponse("InterfaceNotFound", "The interface or operation could not be found");
                 } catch(Exception ex) {
-                    res = new RpcResponse("BadRequest", string.Format("The request format is invalid: {0}", ex.Message));
+                    res = new RpcResponse("ArgumentInvalid", string.Format("The request format is invalid: {0}", ex.Message));
                 }
 
                 // apply single request
@@ -97,7 +99,7 @@ namespace Holon.Remoting
                     if (req != null)
                         memberInfo = GetMember(req.Interface, req.Operation);
                 } catch (KeyNotFoundException) {
-                    res = new RpcResponse("NotFound", "The interface or operation could not be found");
+                    res = new RpcResponse("OperationNotFound", "The interface or operation could not be found");
                 }
 
                 // apply request if we don't have a response already
@@ -152,14 +154,18 @@ namespace Holon.Remoting
             if (!_behaviours.TryGetValue(@interface, out Binding binding))
                 throw new KeyNotFoundException("The RPC interface could not been found");
 
-            // find operation
+            // get type info
             TypeInfo behaviourType = binding.Behaviour.GetType().GetTypeInfo();
-            MemberInfo[] operationMembers = behaviourType.GetMember(operation);
+            Type interfaceType = _behaviours[@interface].Interface;
 
-            if (operationMembers.Length == 0)
+            // find interface map
+            InterfaceMapping mapping = behaviourType.GetRuntimeInterfaceMap(interfaceType);
+            MemberInfo operationMember = mapping.InterfaceMethods.SingleOrDefault(m => m.Name.Equals(operation, StringComparison.CurrentCultureIgnoreCase));
+
+            if (operationMember == null)
                 throw new KeyNotFoundException("The RPC operation could not been found");
 
-            return operationMembers[0];
+            return operationMember;
         }
 
         /// <summary>
@@ -171,74 +177,43 @@ namespace Holon.Remoting
         private async Task<RpcResponse> ApplyRequestAsync(RpcRequest req, MemberInfo member) {
             // find interface behaviour
             if (!_behaviours.TryGetValue(req.Interface, out Binding binding))
-                return new RpcResponse("NotFound", "The interface binding could not be found");
+                return new RpcResponse("InterfaceNotFound", "The interface binding could not be found");
+            
+            // get method info
+            MethodInfo operationMethod = member as MethodInfo;
 
-            // call
-            MemberInfo operationMember = member;
+            // get parameters
+            ParameterInfo[] methodParams = operationMethod.GetParameters();
+            object[] methodArgs = new object[methodParams.Length];
 
-            if (operationMember is PropertyInfo) {
-                if (!req.Arguments.TryGetValue("Property", out object val)) {
-                    // get property info
-                    PropertyInfo operationProperty = operationMember as PropertyInfo;
-
-                    // invoke method
-                    object methodResult = null;
-
-                    try {
-                        methodResult = operationProperty.GetValue(binding.Behaviour);
-                        await (Task)methodResult;
-                    } catch (RpcException ex) {
-                        return new RpcResponse(ex.Code, ex.Message);
-                    } catch (Exception ex) {
-                        return new RpcResponse("Exception", ex.ToString());
-                    }
-                    
-                    // get result
-                    object realRes = methodResult.GetType().GetTypeInfo().GetProperty("Result").GetValue(methodResult);
-
-                    return new RpcResponse(realRes);
-                } else {
-                    throw new NotSupportedException("The property cannot be written to");
+            // fill arguments
+            for (int i = 0; i < methodArgs.Length; i++) {
+                if (!req.Arguments.TryGetValue(methodParams[i].Name, out methodArgs[i])) {
+                    if (!methodParams[i].IsOptional)
+                        return new RpcResponse("ArgumentRequired", string.Format("The argument {0} is not optional", methodParams[i].Name));
                 }
-            } else if (operationMember is MethodInfo) {
-                // get method info
-                MethodInfo operationMethod = operationMember as MethodInfo;
+            }
 
-                // get parameters
-                ParameterInfo[] methodParams = operationMethod.GetParameters();
-                object[] methodArgs = new object[methodParams.Length];
+            // invoke method
+            object methodResult = null;
 
-                // fill arguments
-                for (int i = 0; i < methodArgs.Length; i++) {
-                    if (!req.Arguments.TryGetValue(methodParams[i].Name, out methodArgs[i])) {
-                        if (!methodParams[i].IsOptional)
-                            return new RpcResponse("BadRequest", string.Format("The argument {0} is not optional", methodParams[i].Name));
-                    }
-                }
+            try {
+                methodResult = operationMethod.Invoke(binding.Behaviour, methodArgs);
+                await (Task)methodResult;
+            } catch (RpcException ex) {
+                return new RpcResponse(ex.Code, ex.Message);
+            } catch (Exception ex) {
+                return new RpcResponse("Exception", ex.ToString());
+            }
 
-                // invoke method
-                object methodResult = null;
-
-                try {
-                    methodResult = operationMethod.Invoke(binding.Behaviour, methodArgs);
-                    await (Task)methodResult;
-                } catch (RpcException ex) {
-                    return new RpcResponse(ex.Code, ex.Message);
-                } catch (Exception ex) {
-                    return new RpcResponse("Exception", ex.ToString());
-                }
-
-                // check if the operation returns anything
-                if (operationMethod.ReturnType == typeof(Task)) {
-                    return new RpcResponse(null);
-                } else {
-                    // get result
-                    object realRes = methodResult.GetType().GetTypeInfo().GetProperty("Result").GetValue(methodResult);
-
-                    return new RpcResponse(realRes);
-                }
+            // check if the operation returns anything
+            if (operationMethod.ReturnType == typeof(Task)) {
+                return new RpcResponse(null);
             } else {
-                throw new NotSupportedException("Unable to apply to operation of unknown member type");
+                // get result
+                object realRes = methodResult.GetType().GetTypeInfo().GetProperty("Result").GetValue(methodResult);
+
+                return new RpcResponse(realRes);
             }
         }
 
@@ -344,8 +319,15 @@ namespace Holon.Remoting
             }
 
             public object Behaviour { get; set; }
+
+            /// <summary>
+            /// Gets the interface type.
+            /// </summary>
             public Type Interface { get; set; }
             
+            /// <summary>
+            /// Gets the interface information for this behaviour.
+            /// </summary>
             public InterfaceInformation Introspection {
                 get {
                     // get existing information
@@ -354,54 +336,38 @@ namespace Holon.Remoting
 
                     // get type info
                     TypeInfo interfaceType = Interface.GetTypeInfo();
-                    PropertyInfo[] interfaceProperties = interfaceType.GetProperties();
                     MethodInfo[] interfaceMethods = interfaceType.GetMethods();
 
-                    List<InterfaceMethodInformation> methodInfos = new List<InterfaceMethodInformation>();
-                    List<InterfacePropertyInformation> propertyInfos = new List<InterfacePropertyInformation>();
-
-                    // add properties
-                    foreach (PropertyInfo property in interfaceProperties) {
-                        RpcOperationAttribute attr = property.GetCustomAttribute<RpcOperationAttribute>();
-
-                        if (attr != null && attr.AllowIntrospection) {
-                            propertyInfos.Add(new InterfacePropertyInformation() {
-                                IsReadable = property.CanRead,
-                                IsWriteable = property.CanWrite,
-                                Name = property.Name,
-                                PropertyType = RpcArgument.TypeToString(property.PropertyType == typeof(Task) ? typeof(void) : property.PropertyType.GetGenericArguments()[0])
-                            });
-                        }
-                    }
-
-                    // add methods
-                    foreach (MethodInfo method in interfaceMethods) {
+                    // project operations
+                    InterfaceOperationInformation[] operationInfos = interfaceMethods.Where(method => {
                         RpcOperationAttribute attr = method.GetCustomAttribute<RpcOperationAttribute>();
 
-                        if (attr != null && attr.AllowIntrospection) {
-                            // get arguments
-                            RpcArgument[] rpcArgs = RpcArgument.FromMethod(method);
-                            InterfaceArgumentInformation[] methodArgs = rpcArgs.Select((a) => new InterfaceArgumentInformation() {
-                                Name = a.Name,
-                                Optional = a.Optional,
-                                Type = RpcArgument.TypeToString(a.Type)
-                            }).ToArray();
+                        return attr != null && attr.AllowIntrospection;
+                    }).Select((method) => {
+                        RpcOperationAttribute attr = method.GetCustomAttribute<RpcOperationAttribute>();
 
-                            // add method
-                            methodInfos.Add(new InterfaceMethodInformation() {
-                                ReturnType = RpcArgument.TypeToString(method.ReturnType == typeof(Task) ? typeof(void) : method.ReturnType.GetGenericArguments()[0]),
-                                Name = method.Name,
-                                Arguments = methodArgs,
-                                NoReply = attr.NoReply
-                            });
-                        }
-                    }
+                        // get arguments
+                        RpcArgument[] rpcArgs = RpcArgument.FromMethod(method);
+                        InterfaceArgumentInformation[] methodArgs = rpcArgs.Select((a) => new InterfaceArgumentInformation() {
+                            Name = a.Name,
+                            Optional = a.Optional,
+                            Type = RpcArgument.TypeToString(a.Type)
+                        }).ToArray();
+
+                        // add method
+                        return new InterfaceOperationInformation() {
+                            ReturnType = RpcArgument.TypeToString(method.ReturnType == typeof(Task) ? typeof(void) : method.ReturnType.GetGenericArguments()[0]),
+                            Name = method.Name,
+                            Arguments = methodArgs,
+                            NoReply = attr.NoReply,
+                            Throws = StandardErrors.Concat(method.GetCustomAttributes<RpcThrowsAttribute>().Select(throwAttr => throwAttr.Error)).ToArray()
+                        };
+                    }).ToArray();
 
                     // create interface information
                     _introspection = new InterfaceInformation() {
                         Name = Name,
-                        Methods = methodInfos.ToArray(),
-                        Properties = propertyInfos.ToArray()
+                        Operations = operationInfos.ToArray(),
                     };
 
                     return _introspection;
@@ -435,7 +401,7 @@ namespace Holon.Remoting
 
                 lock (_behaviour._behaviours) {
                     if (!_behaviour._behaviours.TryGetValue(@interface, out binding) || !binding.AllowIntrospection)
-                        throw new RpcException("NotFound", "The interface does not exist");
+                        throw new RpcException("InterfaceNotFound", "The interface does not exist");
                 }
 
                 return Task.FromResult(binding.Introspection);
