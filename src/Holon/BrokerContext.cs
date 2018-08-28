@@ -12,7 +12,7 @@ namespace Holon
     /// <summary>
     /// Represents a broker connection.
     /// </summary>
-    internal class BrokerContext : IDisposable
+    internal sealed class BrokerContext : IDisposable
     {
         #region Fields
         private bool _disposed;
@@ -42,7 +42,7 @@ namespace Holon
             var factory = new ConnectionFactory() { Uri = new Uri(endpoint) };
 
             // create connection
-            ctx._connection = await Task.Run(() => factory.CreateConnection());
+            ctx._connection = await Task.Run(() => factory.CreateConnection()).ConfigureAwait(false);
 
             // start
             ctx._workCancel = new CancellationTokenSource();
@@ -63,7 +63,7 @@ namespace Holon
             // create a new channel
             IModel channel = await AskWork<IModel>(delegate () {
                 return _connection.CreateModel();
-            });
+            }).ConfigureAwait(false);
 
             // create broker
             Broker broker = new Broker(this, channel);
@@ -140,7 +140,7 @@ namespace Holon
                 WorkItem item = null;
 
                 try {
-                    item = await _workQueue.ReceiveAsync(_workCancel.Token);
+                    item = await _workQueue.ReceiveAsync(_workCancel.Token).ConfigureAwait(false);
 
                     if (item == null)
                         continue;
@@ -172,7 +172,7 @@ namespace Holon
 
             // receive all remaining items and cancel
             while (_workQueue.Count > 0) {
-                WorkItem item = await _workQueue.ReceiveAsync();
+                WorkItem item = await _workQueue.ReceiveAsync().ConfigureAwait(false);
 
                 if (item.TaskSource != null)
                     item.TaskSource.SetCanceled();
@@ -209,16 +209,16 @@ namespace Holon
             };
 
             // post to work queue
-            await _workQueue.SendAsync(workItem);
+            await _workQueue.SendAsync(workItem).ConfigureAwait(false);
 
-            return await tcs.Task;
+            return await tcs.Task.ConfigureAwait(false);
         }
         
         internal async Task<T> AskWork<T>(Func<object> action) {
             if (_disposed)
                 throw new ObjectDisposedException(nameof(BrokerContext));
 
-            object o = await AskWork(action);
+            object o = await AskWork(action).ConfigureAwait(false);
             return (T)o;
         }
         #endregion

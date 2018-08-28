@@ -8,7 +8,7 @@ namespace Holon.Remoting
     /// Defines the target interface as a service contract.
     /// </summary>
     [AttributeUsage(AttributeTargets.Interface)]
-    public class RpcContractAttribute : Attribute
+    public sealed class RpcContractAttribute : Attribute
     {
         #region Properties
         /// <summary>

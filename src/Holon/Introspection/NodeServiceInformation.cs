@@ -30,5 +30,29 @@ namespace Holon.Introspection
         /// </summary>
         [ProtoMember(3, IsRequired = true)]
         public ServiceExecution Execution { get; set; }
+
+        /// <summary>
+        /// Gets or sets the number of pending requests.
+        /// </summary>
+        [ProtoMember(4, IsRequired = true)]
+        public int RequestsPending { get; set; }
+
+        /// <summary>
+        /// Gets or sets the number of faulted requests.
+        /// </summary>
+        [ProtoMember(5, IsRequired = true)]
+        public int RequestsFaulted { get; set; }
+
+        /// <summary>
+        /// Gets or sets the number of completed requests.
+        /// </summary>
+        [ProtoMember(6, IsRequired = true)]
+        public int RequestsCompleted { get; set; }
+
+        /// <summary>
+        /// Gets or sets the uptime of the service in seconds.
+        /// </summary>
+        [ProtoMember(7, IsRequired = true)]
+        public long Uptime { get; set; }
     }
 }

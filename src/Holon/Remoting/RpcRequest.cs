@@ -7,7 +7,7 @@ namespace Holon.Remoting
     /// <summary>
     /// Represents a single RPC request.
     /// </summary>
-    public class RpcRequest
+    public sealed class RpcRequest
     {
         #region Fields
         private string _interface;

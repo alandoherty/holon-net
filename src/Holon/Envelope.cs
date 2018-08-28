@@ -11,7 +11,7 @@ namespace Holon
     /// <summary>
     /// Represents the envelope for a received message.
     /// </summary>
-    public class Envelope
+    public sealed class Envelope
     {
         #region Fields
         private Node _node;

@@ -7,7 +7,7 @@ namespace Holon.Remoting
     /// <summary>
     /// Represents an error during an RPC request.
     /// </summary>
-    public class RpcError
+    public sealed class RpcError
     {
         #region Fields
         private string _code;

@@ -11,7 +11,7 @@ using Holon.Services;
 
 namespace Holon.Remoting.Serializers
 {
-    internal class XmlRpcSerializer : IRpcSerializer
+    internal sealed class XmlRpcSerializer : IRpcSerializer
     {
         public const string SerializerName = "xml";
 

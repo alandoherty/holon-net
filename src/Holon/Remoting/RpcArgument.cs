@@ -9,7 +9,7 @@ namespace Holon.Remoting
     /// <summary>
     /// Represents an operation argument.
     /// </summary>
-    public class RpcArgument
+    public sealed class RpcArgument
     {
         #region Fields
         private Type _type;

@@ -7,7 +7,7 @@ namespace Holon.Remoting
     /// <summary>
     /// Represents the response to a RPC operation.
     /// </summary>
-    public class RpcResponse
+    public sealed class RpcResponse
     {
         #region Fields
         private object _data;
@@ -42,7 +42,6 @@ namespace Holon.Remoting
             }
         }
         #endregion
-
 
         #region Constructors
         /// <summary>

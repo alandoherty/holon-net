@@ -8,7 +8,7 @@ namespace Holon.Remoting
     /// Describes the target operation as capable of throwing the provided error code.
     /// </summary>
     [AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
-    public class RpcThrowsAttribute : Attribute
+    public sealed class RpcThrowsAttribute : Attribute
     {
         /// <summary>
         /// Gets or sets the error code.

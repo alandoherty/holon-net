@@ -76,7 +76,7 @@ namespace Holon.Events
                 Envelope envelope = null;
 
                 try {
-                    envelope = new Envelope(await _queue.ReceiveAsync(_readCancel.Token), _node);
+                    envelope = new Envelope(await _queue.ReceiveAsync(_readCancel.Token).ConfigureAwait(false), _node);
                 } catch (Exception) {
                     Dispose();
                     return;

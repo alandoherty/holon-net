@@ -48,13 +48,14 @@ namespace Holon.Remoting
         /// <summary>
         /// Gets an RPC proxy for the provided interface.
         /// </summary>
-        /// <typeparam name="T">The interface type.</typeparam>
+        /// <typeparam name="IT">The interface type.</typeparam>
         /// <param name="node">The node.</param>
         /// <param name="address">The service address.</param>
+        /// <param name="configuration">The configuration.</param>
         /// <returns></returns>
-        public static T Proxy<T>(this Node node, ServiceAddress address) {
+        public static IT Proxy<IT>(this Node node, ServiceAddress address, ProxyConfiguration configuration) {
             // check type is interface
-            TypeInfo typeInfo = typeof(T).GetTypeInfo();
+            TypeInfo typeInfo = typeof(IT).GetTypeInfo();
 
             if (!typeInfo.IsInterface)
                 throw new InvalidOperationException("A static RPC proxy must be derived from an interface");
@@ -64,16 +65,27 @@ namespace Holon.Remoting
 
             if (contractAttr == null)
                 throw new InvalidOperationException("A static RPC proxy must be decorated with a contract attribute");
-            
-            // create proxy
-            T proxy = DispatchProxy.Create<T, RpcProxy<T>>();
-            RpcProxy<T> rpcProxy = (RpcProxy<T>)(object)proxy;
 
-            rpcProxy.Address = address;
+            // create proxy
+            IT proxy = DispatchProxy.Create<IT, RpcProxy<IT>>();
+            RpcProxy<IT> rpcProxy = (RpcProxy<IT>)(object)proxy;
+
+            rpcProxy.Address = address ?? throw new ArgumentNullException(nameof(address), "The proxy address cannot be null");
             rpcProxy.Node = node;
-            rpcProxy.Timeout = TimeSpan.FromMinutes(1);
+            rpcProxy.Configuration = configuration;
 
             return proxy;
+        }
+
+        /// <summary>
+        /// Gets an RPC proxy for the provided interface.
+        /// </summary>
+        /// <typeparam name="IT">The interface type.</typeparam>
+        /// <param name="node">The node.</param>
+        /// <param name="address">The service address.</param>
+        /// <returns></returns>
+        public static IT Proxy<IT>(this Node node, ServiceAddress address) {
+            return Proxy<IT>(node, address, new ProxyConfiguration() { });
         }
 
         /// <summary>

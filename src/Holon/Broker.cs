@@ -12,7 +12,7 @@ namespace Holon
     /// <summary>
     /// Represents a broker attached to the messaging system.
     /// </summary>
-    internal class Broker : IDisposable
+    internal sealed class Broker : IDisposable
     {
         #region Fields
         private bool _disposed;
@@ -200,14 +200,14 @@ namespace Holon
             // declare queue
             QueueDeclareOk ok = await _ctx.AskWork<QueueDeclareOk>(delegate () {
                 return _channel.QueueDeclare(name, durable, exclusive, autoDelete, arguments);
-            });
+            }).ConfigureAwait(false);
 
             // create queue object
-            BrokerQueue queue = new BrokerQueue(this, ok.QueueName); ;
+            BrokerQueue queue = new BrokerQueue(this, ok.QueueName);
 
             // bind to exchange
             if (exchange != "" && routingKey != "") {
-                await queue.BindAsync(exchange, routingKey);
+                await queue.BindAsync(exchange, routingKey).ConfigureAwait(false);
             }
 
             return queue;

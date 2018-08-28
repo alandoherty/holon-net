@@ -8,7 +8,7 @@ namespace Holon
     /// <summary>
     /// Represents a message received on a broker.
     /// </summary>
-    public class BrokerMessage
+    public sealed class BrokerMessage
     {
         #region Fields
         private IModel _channel;

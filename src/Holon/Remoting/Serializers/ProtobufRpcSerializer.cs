@@ -14,7 +14,7 @@ namespace Holon.Remoting.Serializers
     /// <summary>
     /// Implements the new improved ProtoBuf serializer, with more efficient sub-serialization and additional type support.
     /// </summary>
-    internal class ProtobufRpcSerializer : IRpcSerializer
+    internal sealed class ProtobufRpcSerializer : IRpcSerializer
     {
         public const string SerializerName = "pbuf";
 

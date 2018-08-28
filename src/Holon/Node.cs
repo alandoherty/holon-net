@@ -18,13 +18,15 @@ namespace Holon
     /// <summary>
     /// Represents an application node.
     /// </summary>
-    public class Node : IDisposable
+    public sealed class Node : IDisposable
     {
         #region Fields
+        private BrokerContext _brokerContext;
+        private Broker _broker;
+
         private Guid _uuid;
 
         private NodeConfiguration _configuration;
-        private Broker _broker;
         private TaskCompletionSource<Broker> _brokerWait;
 
         private bool _disposed;
@@ -36,8 +38,8 @@ namespace Holon
 
         private BrokerQueue _replyQueue;
         private Dictionary<Guid, TaskCompletionSource<Envelope>> _replyWaits = new Dictionary<Guid, TaskCompletionSource<Envelope>>();
-        private Service _nodeService;
-
+        private Service _queryService;
+        
         internal static Dictionary<string, string> DefaultTags = new Dictionary<string, string>() {
             { "RPCVersion", RpcHeader.HEADER_VERSION },
             { "RPCSerializers", "pbuf,xml" }
@@ -62,9 +64,9 @@ namespace Holon
         /// <summary>
         /// Gets the underlying introspection service.
         /// </summary>
-        public Service Service {
+        public Service QueryService {
             get {
-                return _nodeService;
+                return _queryService;
             }
         }
 
@@ -156,10 +158,10 @@ namespace Holon
             }
 
             if (wait != null)
-                broker = await wait.Task;
-            
+                broker = await wait.Task.ConfigureAwait(false);
+
             // send
-            await broker.SendAsync("", replyTo, null, envelopeId.ToString(), headers, body);
+            await broker.SendAsync("", replyTo, null, envelopeId.ToString(), headers, body).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -190,10 +192,10 @@ namespace Holon
             }
 
             if (wait != null)
-                broker = await wait.Task;
+                broker = await wait.Task.ConfigureAwait(false);
 
             // send
-            await broker.SendAsync(addr.Namespace, addr.RoutingKey, null, null, headers, body);
+            await broker.SendAsync(addr.Namespace, addr.RoutingKey, null, null, headers, body).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -239,7 +241,7 @@ namespace Holon
             }
 
             if (wait != null)
-                broker = await wait.Task;
+                broker = await wait.Task.ConfigureAwait(false);
 
             // setup receive handler
             Guid envelopeId = Guid.NewGuid();
@@ -253,10 +255,10 @@ namespace Holon
                 headers["x-message-ttl"] = timeout.TotalSeconds;
 
             // send
-            await broker.SendAsync(addr.Namespace, addr.RoutingKey, _replyQueue.Name, envelopeId.ToString(), headers, body);
+            await broker.SendAsync(addr.Namespace, addr.RoutingKey, _replyQueue.Name, envelopeId.ToString(), headers, body).ConfigureAwait(false);
 
             // the actual receiver handler is setup since it's syncronous, but now we wait
-            return await envelopeWait;
+            return await envelopeWait.ConfigureAwait(false);
         }
 
         /// <summary>
@@ -275,15 +277,15 @@ namespace Holon
             }
 
             if (timeout == TimeSpan.Zero)
-                return await tcs.Task;
+                return await tcs.Task.ConfigureAwait(false);
             else {
                 // create the timeout and cancellation task
                 Task timeoutTask = Task.Delay(timeout);
                 Task cancelTask = cancellation == CancellationToken.None ? null : Task.FromCanceled(cancellation);
 
                 // wait until either the operation times out, is cancelled or finishes
-                Task resultTask = cancelTask == null ? await Task.WhenAny(timeoutTask, tcs.Task) :
-                    await Task.WhenAny(timeoutTask, tcs.Task, cancelTask);
+                Task resultTask = cancelTask == null ? await Task.WhenAny(timeoutTask, tcs.Task).ConfigureAwait(false) :
+                    await Task.WhenAny(timeoutTask, tcs.Task, cancelTask).ConfigureAwait(false);
 
                 if (resultTask == timeoutTask)
                     throw new TimeoutException("The operation timed out before a reply was received");
@@ -323,10 +325,10 @@ namespace Holon
             }
 
             // wait for reconnect
-            _broker = await _broker.Context.CreateBrokerAsync();
+            _broker = await _broker.Context.CreateBrokerAsync().ConfigureAwait(false);
 
             // setup
-            await SetupAsync();
+            await SetupAsync().ConfigureAwait(false);
 
             // resetup services
             List<Task> resetupTasks = new List<Task>();
@@ -338,7 +340,7 @@ namespace Holon
             }
 
             // wait until all services are setup again
-            await Task.WhenAll(resetupTasks);
+            await Task.WhenAll(resetupTasks).ConfigureAwait(false);
 
 #if DEBUG
             Debug.WriteLine(string.Format(":Reconnect -> Recreated broker with {0} services", resetupTasks.Count));
@@ -365,7 +367,7 @@ namespace Holon
                 Debug.WriteLine(":Reconnect -> Reconnecting");
 
                 try {
-                    await ReconnectAsync();
+                    await ReconnectAsync().ConfigureAwait(false);
 #if DEBUG
                 } catch(Exception ex) {
                     Debug.Fail(":Reconnect -> Failed to reconnect: " + ex.Message);
@@ -404,15 +406,15 @@ namespace Holon
 
                     _replyQueue = await _broker.CreateQueueAsync(string.Format("~reply:{1}%{0}", _uuid, uniqueIdStr), false, true, "", "", new Dictionary<string, object>() {
                         { "x-expires", (int)TimeSpan.FromMinutes(15).TotalMilliseconds }
-                    });
+                    }).ConfigureAwait(false);
                 }
             } catch (Exception ex) {
                 throw new InvalidOperationException("Failed to create node reply queue", ex);
             }
 
             // setup service
-            if (_nodeService == null) {
-                _nodeService = await AttachAsync(string.Format("node:{0}", _uuid), ServiceType.Singleton, ServiceExecution.Parallel, RpcBehaviour.BindOne<INodeQuery001>(new NodeQueryImpl(this)));
+            if (_queryService == null) {
+                _queryService = await AttachAsync(string.Format("node:{0}", _uuid), ServiceType.Singleton, ServiceExecution.Parallel, RpcBehaviour.BindOne<INodeQuery001>(new NodeQueryImpl(this))).ConfigureAwait(false);
             }
 
             // start reply processor
@@ -423,18 +425,17 @@ namespace Holon
         /// Attaches the service provider to the address.
         /// </summary>
         /// <param name="addr">The service address.</param>
-        /// <param name="type">The service type.</param>
-        /// <param name="execution">The service execution.</param>
+        /// <param name="configuration">The service configuration.</param>
         /// <param name="behaviour">The service behaviour.</param>
-        /// <returns></returns>
-        public async Task<Service> AttachAsync(ServiceAddress addr, ServiceType type, ServiceExecution execution, IServiceBehaviour behaviour) {
+        /// <returns>The attached service.</returns>
+        public async Task<Service> AttachAsync(ServiceAddress addr, ServiceConfiguration configuration, IServiceBehaviour behaviour) {
             // create service
-            Service service = new Service(this, _broker, addr, behaviour, type, execution);
+            Service service = new Service(this, _broker, addr, behaviour, configuration);
 
             // create queue
-            await service.SetupAsync();
+            await service.SetupAsync().ConfigureAwait(false);
 
-            lock(_services) {
+            lock (_services) {
                 _services.Add(service);
             }
 
@@ -444,11 +445,26 @@ namespace Holon
         /// <summary>
         /// Attaches the service provider to the address.
         /// </summary>
+        /// <param name="addr">The service address.</param>
+        /// <param name="type">The service type.</param>
+        /// <param name="execution">The service execution.</param>
+        /// <param name="behaviour">The service behaviour.</param>
+        /// <returns>The attached service.</returns>
+        public Task<Service> AttachAsync(ServiceAddress addr, ServiceType type, ServiceExecution execution, IServiceBehaviour behaviour) {
+            return AttachAsync(addr, new ServiceConfiguration() {
+                Type = type,
+                Execution = execution
+            }, behaviour);
+        }
+
+        /// <summary>
+        /// Attaches the service provider to the address.
+        /// </summary>
         /// <param name="addr">The address.</param>
         /// <param name="type">The service type.</param>
         /// <param name="execution">The service execution.</param>
         /// <param name="behaviour">The behaviour.</param>
-        /// <returns></returns>
+        /// <returns>The attached service.</returns>
         public Task<Service> AttachAsync(string addr, ServiceType type, ServiceExecution execution, IServiceBehaviour behaviour) {
             return AttachAsync(new ServiceAddress(addr), type, execution, behaviour);
         }
@@ -521,7 +537,7 @@ namespace Holon
                 BrokerMessage msg = null;
 
                 try {
-                    msg = await _replyQueue.ReceiveAsync();
+                    msg = await _replyQueue.ReceiveAsync().ConfigureAwait(false);
                 } catch(Exception) {
                     break;
                 }
@@ -613,11 +629,11 @@ namespace Holon
 
             while (retries > 0) {
                 try {
-                    await _broker.DeclareExchange(string.Format("!{0}", addr.Namespace), "topic", false, false);
+                    await _broker.DeclareExchange(string.Format("!{0}", addr.Namespace), "topic", false, false).ConfigureAwait(false);
                     break;
                 } catch (Exception) {
                     retries--;
-                    await Task.Delay(1000);
+                    await Task.Delay(1000).ConfigureAwait(false);
                 }
             }
 
@@ -647,7 +663,7 @@ namespace Holon
             }
 
             if (!declared)
-                await DeclareEventAsync<TData>(addr);
+                await DeclareEventAsync<TData>(addr).ConfigureAwait(false);
 
             // serialize
             ProtobufEventSerializer serializer = new ProtobufEventSerializer();
@@ -657,7 +673,7 @@ namespace Holon
             try {
                 await _broker.SendAsync(string.Format("!{0}", addr.Namespace), addr.Name, null, null, new Dictionary<string, object>() {
                     { EventHeader.HEADER_NAME, new EventHeader(EventHeader.HEADER_VERSION, serializer.Name).ToString() }
-                }, body, false);
+                }, body, false).ConfigureAwait(false);
             } catch (Exception) { }
         }
 
@@ -680,7 +696,7 @@ namespace Holon
         /// <returns>The subscription.</returns>
         public async Task<Subscription<TData>> SubscribeAsync<TData>(EventAddress addr) {
             // create the queue
-            await _broker.DeclareExchange(string.Format("!{0}", addr.Namespace), "topic", false, false);
+            await _broker.DeclareExchange(string.Format("!{0}", addr.Namespace), "topic", false, false).ConfigureAwait(false);
             BrokerQueue brokerQueue = null;
 
             // declare queue with unique name
@@ -690,7 +706,7 @@ namespace Holon
                 rng.GetBytes(uniqueId);
                 string uniqueIdStr = BitConverter.ToString(uniqueId).Replace("-", "").ToLower();
 
-                brokerQueue = await _broker.CreateQueueAsync(string.Format("!{0}%{1}", addr.ToString(), uniqueIdStr), false, true, string.Format("!{0}", addr.Namespace), addr.Name, null);
+                brokerQueue = await _broker.CreateQueueAsync(string.Format("!{0}%{1}", addr.ToString(), uniqueIdStr), false, true, string.Format("!{0}", addr.Namespace), addr.Name, null).ConfigureAwait(false);
             }
             
 
@@ -712,6 +728,52 @@ namespace Holon
         #region Metrics
         #endregion
 
+        #region Setup
+        /// <summary>
+        /// Creates a new node on the provided endpoint.
+        /// </summary>
+        /// <param name="endpoint">The broker endpoint.</param>
+        /// <param name="configuration">The configuration.</param>
+        /// <returns></returns>
+        public static async Task<Node> CreateAsync(string endpoint, NodeConfiguration configuration = default(NodeConfiguration)) {
+            // fill configuration
+            if (configuration == null)
+                configuration = new NodeConfiguration();
+            
+            // create broker context
+            BrokerContext ctx = await BrokerContext.CreateAsync(endpoint);
+
+            // create broker
+            Broker broker = await ctx.CreateBrokerAsync();
+
+            // create node
+            Node node = new Node(broker, configuration);
+            node._brokerContext = ctx;
+            node._broker = broker;
+
+            return node;
+        }
+
+        /// <summary>
+        /// Creates a new node on the provided endpoint.
+        /// </summary>
+        /// <param name="configuration">The broker endpoint.</param>
+        /// <returns></returns>
+        public static Task<Node> CreateFromEnvironmentAsync(NodeConfiguration configuration = default(NodeConfiguration)) {
+            // check environment
+            string nodeUuid = Environment.GetEnvironmentVariable("NODE_UUID");
+            string endpoint = Environment.GetEnvironmentVariable("BROKER_ENDPOINT");
+
+            if (nodeUuid != null)
+                configuration.UUID = Guid.Parse(nodeUuid);
+
+            if (endpoint == null)
+                throw new ArgumentNullException("The endpoint in environment is null");
+
+            return CreateAsync(endpoint, configuration);
+        }
+        #endregion
+
         #region Constructors
         /// <summary>
         /// Creates a new node.
@@ -719,10 +781,6 @@ namespace Holon
         /// <param name="broker">The broker.</param>
         /// <param name="configuration">The node configuration.</param>
         internal Node(Broker broker, NodeConfiguration configuration) {
-            // create default config
-            if (configuration == null)
-                configuration = new NodeConfiguration() { };
-
             // check app id format
             if (configuration.ApplicationId.IndexOf('.') + configuration.ApplicationId.IndexOf(' ') != -2)
                 throw new FormatException("The node application id cannot contains dots or spaces");

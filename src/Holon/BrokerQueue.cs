@@ -10,7 +10,7 @@ namespace Holon
     /// <summary>
     /// Represents a self-consumed queue.
     /// </summary>
-    internal class BrokerQueue : IDisposable
+    internal sealed class BrokerQueue : IDisposable
     {
         #region Fields
         private string _queue;
@@ -18,6 +18,7 @@ namespace Holon
         private bool _disposed;
         private AsyncConsumer _consumer;
         private string _consumerTag;
+        private bool _autoAck;
         private List<string> _exchanges = new List<string>();
         #endregion
 
@@ -52,12 +53,12 @@ namespace Holon
                 await _broker.Context.AskWork(delegate () {
                     _broker.Channel.QueueBind(_queue, exchange, routingKey);
                     return null;
-                });
+                }).ConfigureAwait(false);
             } catch (Exception ex) {
                 // try and clean up the queue first
                 await _broker.Context.AskWork<QueueDeclareOk>(delegate () {
                     return _broker.Channel.QueueDelete(_queue, true, true);
-                });
+                }).ConfigureAwait(false);
 
                 // rethrow
                 throw new InvalidOperationException("Failed to bind queue to exchange", ex);
@@ -91,15 +92,15 @@ namespace Holon
                 // consume queue
                 try {
                     _consumerTag = (string)await _broker.Context.AskWork(delegate () {
-                        return _broker.Channel.BasicConsume(_queue, true, "", false, false, null, _consumer);
-                    });
+                        return _broker.Channel.BasicConsume(_queue, false, "", false, false, null, _consumer);
+                    }).ConfigureAwait(false);
                 } catch(Exception) {
                     _consumer = null;
                     throw;
                 }
             }
             
-            return await _consumer.ReceiveAsync(cancellationToken);
+            return await _consumer.ReceiveAsync(cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>

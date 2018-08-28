@@ -12,16 +12,18 @@ namespace Holon.Remoting
     /// Provides functionality to proxy calls for an RPC interface.
     /// </summary>
     /// <typeparam name="T">The interface.</typeparam>
-    public class RpcProxy<T> : DispatchProxy
+    public sealed class RpcProxy<T> : DispatchProxy
     {
         #region Fields
         private Node _node;
         private ServiceAddress _addr;
-        private TimeSpan _timeout;
         private TypeInfo _typeInfo;
         private MethodInfo _invokeMethodInfo;
         private MethodInfo _invokePropertyInfo;
+
         private RpcContractAttribute _contractAttr;
+
+        private ProxyConfiguration _configuration;
         #endregion
 
         #region Properties
@@ -48,44 +50,18 @@ namespace Holon.Remoting
         }
 
         /// <summary>
-        /// Gets or sets the default timeout.
+        /// Gets or sets the configuration.
         /// </summary>
-        public TimeSpan Timeout {
+        public ProxyConfiguration Configuration {
             get {
-                return _timeout;
-            } set {
-                _timeout = value;
+                return _configuration;
+            } internal set {
+                _configuration = value;
             }
         }
         #endregion
 
         #region Methods
-        /// <summary>
-        /// Gets the service address of a active RPC proxy.
-        /// </summary>
-        /// <param name="proxy">The proxy.</param>
-        /// <returns>The address.</returns>
-        public static ServiceAddress GetProxyAddress(object proxy) {
-            // check castable
-            if (!(proxy is RpcProxy<T>))
-                throw new InvalidOperationException("The provided proxy is not castable");
-
-            return ((RpcProxy<T>)proxy).Address;
-        }
-
-        /// <summary>
-        /// Gets the timeout of a active RPC proxy.
-        /// </summary>
-        /// <param name="proxy">The proxy.</param>
-        /// <returns>The timeout.</returns>
-        public static TimeSpan GetTimeout(object proxy) {
-            // check castable
-            if (!(proxy is RpcProxy<T>))
-                throw new InvalidOperationException("The provided proxy is not castable");
-
-            return ((RpcProxy<T>)proxy).Timeout;
-        }
-
         /// <summary>
         /// Handles invokations on the proxy.
         /// </summary>
@@ -173,7 +149,7 @@ namespace Holon.Remoting
             } else {
                 Envelope res = await _node.AskAsync(_addr, body, new Dictionary<string, object>() {
                     { RpcHeader.HEADER_NAME, header.ToString() }
-                }, _timeout);
+                }, _configuration.Timeout);
 
                 // try and get response header
                 if (!res.Headers.TryGetValue(RpcHeader.HEADER_NAME, out object resHeaderData))
@@ -236,7 +212,7 @@ namespace Holon.Remoting
             // ask
             Envelope res = await _node.AskAsync(_addr, body, new Dictionary<string, object>() {
                 { RpcHeader.HEADER_NAME, header.ToString() }
-            }, _timeout);
+            }, _configuration.Timeout);
 
             // try and get response header
             if (!res.Headers.TryGetValue(RpcHeader.HEADER_NAME, out object resHeaderData))
@@ -266,6 +242,14 @@ namespace Holon.Remoting
 
             // throw error
             throw new RpcException(resPayload.Error);
+        }
+
+        /// <summary>
+        /// Gets the string representation of this proxy.
+        /// </summary>
+        /// <returns></returns>
+        public override string ToString() {
+            return _typeInfo.Name;
         }
         #endregion
 

@@ -7,7 +7,7 @@ namespace Holon.Services
     /// <summary>
     /// Represents a service address
     /// </summary>
-    public class ServiceAddress
+    public sealed class ServiceAddress
     {
         #region Fields
         private int _divIdx;
@@ -105,6 +105,20 @@ namespace Holon.Services
         /// <returns></returns>
         public override int GetHashCode() {
             return _addr.GetHashCode();
+        }
+
+        /// <summary>
+        /// Determines whether this instance is equal to the provided object.
+        /// </summary>
+        /// <param name="obj">The object.</param>
+        /// <returns></returns>
+        public override bool Equals(object obj) {
+            ServiceAddress addr = obj as ServiceAddress;
+
+            if (addr == null)
+                return false;
+
+            return _addr.ToString().Equals(ToString(), StringComparison.CurrentCultureIgnoreCase);
         }
         #endregion
 

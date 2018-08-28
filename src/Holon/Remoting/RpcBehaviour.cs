@@ -13,10 +13,10 @@ namespace Holon.Remoting
     /// <summary>
     /// Provides RPC functionality for a service
     /// </summary>
-    public class RpcBehaviour : IAsyncServiceBehaviour
+    public sealed class RpcBehaviour : IAsyncServiceBehaviour
     {
         #region Fields
-        internal static string[] StandardErrors = new string[] { "InterfaceNotFound", "OperationNotFound", "ArgumentRequired", "ArgumentMissing" };
+        internal static string[] StandardErrors = new string[] { "InterfaceNotFound", "OperationNotFound", "ArgumentRequired", "ArgumentMissing", "InvalidOperation", "Exception" };
 
         private Dictionary<string, Binding> _behaviours = new Dictionary<string, Binding>(StringComparer.CurrentCultureIgnoreCase);
         #endregion
@@ -47,10 +47,6 @@ namespace Holon.Remoting
         /// <param name="envelope">The envelope.</param>
         /// <returns></returns>
         public Task HandleAsync(Envelope envelope) {
-            // ensure the envelope has an ID
-            if (envelope.ID == Guid.Empty)
-                throw new InvalidOperationException("The incoming envelope has no reply identifier");
-
             // try and get the header info
             if (!envelope.Headers.TryGetValue(RpcHeader.HEADER_NAME, out object rpcHeader))
                 throw new InvalidOperationException("The incoming envelope is not a valid RPC message");
@@ -102,10 +98,6 @@ namespace Holon.Remoting
                     res = new RpcResponse("OperationNotFound", "The interface or operation could not be found");
                 }
 
-                // apply request if we don't have a response already
-                if (res == null)
-                    res = await ApplyRequestAsync(req, memberInfo);
-
                 // get operation information
                 RpcOperationAttribute opAttr = null;
 
@@ -114,16 +106,30 @@ namespace Holon.Remoting
                     MemberInfo[] interfaceMember = interfaceType.GetMember(req.Operation);
                     opAttr = interfaceMember[0].GetCustomAttribute<RpcOperationAttribute>();
                 }
+
+                // get if no reply is enabled
+                bool noReply = opAttr != null && opAttr.NoReply;
+
+                // check if they have a response ID if no reply isn't enabled
+                if (!noReply && envelope.ID == Guid.Empty)
+                    res = new RpcResponse("InvalidOperation", "The envelope does not specify a correlation ID");
+
+                // apply request if we don't have a response already, typically an error
+                if (res == null)
+                    res = await ApplyRequestAsync(req, memberInfo).ConfigureAwait(false);
                 
-                if (opAttr == null || (opAttr != null && !opAttr.NoReply)) {
+                // send response unless no-reply 
+                if (!noReply) {
                     // serialize response
                     byte[] resBody = serializer.SerializeResponse(res);
 
                     // send reply
                     await envelope.Node.ReplyAsync(envelope.ReplyTo, envelope.ID, new Dictionary<string, object>() {
-                    { RpcHeader.HEADER_NAME, new RpcHeader(RpcHeader.HEADER_VERSION, serializer.Name, RpcMessageType.Single).ToString() }
-                }, resBody);
+                        { RpcHeader.HEADER_NAME, new RpcHeader(RpcHeader.HEADER_VERSION, serializer.Name, RpcMessageType.Single).ToString() }
+                    }, resBody).ConfigureAwait(false);
                 }
+
+                // throw exceptions
             } else {
                 throw new NotImplementedException("Batched RPC is not supported currently");
             }
@@ -199,13 +205,13 @@ namespace Holon.Remoting
 
             try {
                 methodResult = operationMethod.Invoke(binding.Behaviour, methodArgs);
-                await (Task)methodResult;
+                await ((Task)methodResult).ConfigureAwait(false);
             } catch (RpcException ex) {
                 return new RpcResponse(ex.Code, ex.Message);
             } catch (Exception ex) {
                 return new RpcResponse("Exception", ex.ToString());
             }
-
+            
             // check if the operation returns anything
             if (operationMethod.ReturnType == typeof(Task)) {
                 return new RpcResponse(null);

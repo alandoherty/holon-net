@@ -8,7 +8,7 @@ namespace Holon.Remoting
     /// Defines the target method as a valid RPC operation.
     /// </summary>
     [AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
-    public class RpcOperationAttribute : Attribute
+    public sealed class RpcOperationAttribute : Attribute
     {
         /// <summary>
         /// Gets or sets if this operation is visible to introspection.
