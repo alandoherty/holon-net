@@ -11,9 +11,10 @@ namespace Holon.Services
     public interface IServiceBehaviour
     {
         /// <summary>
-        /// Handles the incoming envelope.
+        /// Handles an incoming envelope asyncronously.
         /// </summary>
         /// <param name="envelope">The envelope.</param>
-        void Handle(Envelope envelope);
+        /// <returns></returns>
+        Task HandleAsync(Envelope envelope);
     }
 }

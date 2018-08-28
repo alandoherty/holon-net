@@ -43,21 +43,23 @@ namespace Example.General
         }
     }
 
+    class EventTest
+    {
+        public int Wow { get; set; }
+    }
+
     class Program
     {
         static void Main(string[] args) => AsyncMain(args).Wait();
 
         private static bool go = true;
 
-        public static async void ReadLoop() {
-            while (true) {
-                string line = await Task.Run(() => Console.ReadLine());
+        public static async void ReadLoop(Node node) {
+            // subscribe
+            EventSubscription subscription = await node.SubscribeAsync("user:alan.*");
 
-                if (line == "s") {
-                    Console.WriteLine("STOPPED!");
-                    go = false;
-                } else
-                    go = true;
+            while (true) {
+                Event e = await subscription.ReceiveAsync();
             }
         }
 
@@ -65,19 +67,13 @@ namespace Example.General
             // attach node
             Node node = await Node.CreateFromEnvironmentAsync();
 
-            Service service = await node.AttachAsync("auth:login", ServiceType.Balanced, ServiceExecution.Parallel, RpcBehaviour.BindOne<ITest001>(new Test001()));
-            Service service2 = await node.AttachAsync("auth:login", ServiceType.Balanced, ServiceExecution.Parallel, RpcBehaviour.BindOne<ITest001>(new Test001()));
+            ReadLoop(node);
 
-            ITest001 test = node.Proxy<ITest001>("auth:login");
+            await Task.Delay(5000);
 
-            ReadLoop();
-
-            while (true) {
-                if (go) {
-                    await test.Login(new LoginRequestMsg() { Username = "alan", Password = "bacon" });
-                }
-                await Task.Delay(100).ConfigureAwait(false);
-            }
+            await node.EmitAsync("user:alan.name_changed", new EventTest() {
+                Wow = 39
+            });
 
             await Task.Delay(50000);
         }

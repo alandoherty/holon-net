@@ -13,7 +13,7 @@ namespace Holon.Remoting
     /// <summary>
     /// Provides RPC functionality for a service
     /// </summary>
-    public sealed class RpcBehaviour : IAsyncServiceBehaviour
+    public sealed class RpcBehaviour : IServiceBehaviour
     {
         #region Fields
         internal static string[] StandardErrors = new string[] { "InterfaceNotFound", "OperationNotFound", "ArgumentRequired", "ArgumentMissing", "InvalidOperation", "Exception" };

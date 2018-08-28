@@ -44,11 +44,11 @@ namespace Holon
         public event EventHandler<BrokerShutdownEventArgs> Shutdown;
         public event EventHandler<BrokerReturnedEventArgs> Returned;
 
-        protected void OnShutdown(BrokerShutdownEventArgs e) {
+        private void OnShutdown(BrokerShutdownEventArgs e) {
             Shutdown?.Invoke(this, e);
         }
 
-        protected void OnReturned(BrokerReturnedEventArgs e) {
+        private void OnReturned(BrokerReturnedEventArgs e) {
             Returned?.Invoke(this, e);
         }
         #endregion
@@ -202,8 +202,22 @@ namespace Holon
                 return _channel.QueueDeclare(name, durable, exclusive, autoDelete, arguments);
             }).ConfigureAwait(false);
 
+            // create consumer
+            AsyncConsumer consumer = new AsyncConsumer(_channel);
+
+            // consume queue
+            string consumerTag = null;
+
+            try {
+                consumerTag = (string)await _ctx.AskWork(delegate () {
+                    return _channel.BasicConsume(name, false, "", false, false, null, consumer);
+                }).ConfigureAwait(false);
+            } catch (Exception) {
+                throw;
+            }
+
             // create queue object
-            BrokerQueue queue = new BrokerQueue(this, ok.QueueName);
+            BrokerQueue queue = new BrokerQueue(this, ok.QueueName, consumerTag, consumer);
 
             // bind to exchange
             if (exchange != "" && routingKey != "") {

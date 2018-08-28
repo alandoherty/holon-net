@@ -18,7 +18,6 @@ namespace Holon
         private bool _disposed;
         private AsyncConsumer _consumer;
         private string _consumerTag;
-        private bool _autoAck;
         private List<string> _exchanges = new List<string>();
         #endregion
 
@@ -44,6 +43,14 @@ namespace Holon
         #endregion
 
         #region Methods
+        /// <summary>
+        /// Gets the subscription as an observable target.
+        /// </summary>
+        /// <returns></returns>
+        public IObservable<BrokerMessage> AsObservable() {
+            return _consumer.AsObservable();
+        }
+
         /// <summary>
         /// Binds to the exchange.
         /// </summary>
@@ -72,6 +79,18 @@ namespace Holon
         }
 
         /// <summary>
+        /// Unbinds from an exchange.
+        /// </summary>
+        /// <param name="exchange">The exchange.</param>
+        /// <param name="routingKey">The routing key.</param>
+        public void Unbind(string exchange, string routingKey) {
+            _broker.Context.QueueWork(delegate () {
+                _broker.Channel.QueueUnbind(_queue, exchange, routingKey);
+                return null;
+            });
+        }
+
+        /// <summary>
         /// Receives a message asyncronously.
         /// </summary>
         /// <returns>The message.</returns>
@@ -85,22 +104,16 @@ namespace Holon
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns></returns>
         public async Task<BrokerMessage> ReceiveAsync(CancellationToken cancellationToken) {
-            // create consumer
-            if (_consumer == null) {
-                _consumer = new AsyncConsumer(_broker.Channel);
-
-                // consume queue
-                try {
-                    _consumerTag = (string)await _broker.Context.AskWork(delegate () {
-                        return _broker.Channel.BasicConsume(_queue, false, "", false, false, null, _consumer);
-                    }).ConfigureAwait(false);
-                } catch(Exception) {
-                    _consumer = null;
-                    throw;
-                }
-            }
-            
             return await _consumer.ReceiveAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Receives a message asyncronously.
+        /// </summary>
+        /// <param name="timeout">The timeout.</param>
+        /// <returns></returns>
+        public async Task<BrokerMessage> ReceiveAsync(TimeSpan timeout) {
+            return await _consumer.ReceiveAsync(timeout).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -128,9 +141,13 @@ namespace Holon
         /// </summary>
         /// <param name="broker">The broker.</param>
         /// <param name="queue">The queue name.</param>
-        public BrokerQueue(Broker broker, string queue) {
+        /// <param name="consumerTag">The consumer tag.</param>
+        /// <param name="consumer">The consumer.</param>
+        internal BrokerQueue(Broker broker, string queue, string consumerTag, AsyncConsumer consumer) {
             _broker = broker;
             _queue = queue;
+            _consumer = consumer;
+            _consumerTag = consumerTag;
         }
         #endregion
     }

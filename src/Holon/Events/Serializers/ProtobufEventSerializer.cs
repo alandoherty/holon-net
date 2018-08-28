@@ -27,11 +27,11 @@ namespace Holon.Events.Serializers
             }
         }
 
-        public Event DeserializeEvent(byte[] body, Type type) {
+        public Event DeserializeEvent(byte[] body) {
             using (MemoryStream ms = new MemoryStream(body)) {
                 EventMsg msg = Serializer.Deserialize<EventMsg>(ms);
 
-                return new Event(msg.Name, msg.Data);
+                return new Event(msg.Resource, msg.Name, msg.Data);
             }
         }
 
@@ -39,8 +39,9 @@ namespace Holon.Events.Serializers
             using (MemoryStream ms = new MemoryStream()) {
                 EventMsg eventMsg = new EventMsg();
                 eventMsg.Name = e.Name;
-                eventMsg.Type = RpcArgument.TypeToString(e.Data.GetType());
+                eventMsg.Type = "serialized";
                 eventMsg.Data = e.Data;
+                eventMsg.Resource = e.Resource;
                 Serializer.Serialize(ms, eventMsg);
                 return ms.ToArray();
             }
@@ -51,12 +52,15 @@ namespace Holon.Events.Serializers
     class EventMsg
     {
         [ProtoMember(1, IsRequired = true)]
-        public string Name { get; set; }
+        public string Resource { get; set; }
 
         [ProtoMember(2, IsRequired = true)]
-        public string Type { get; set; }
+        public string Name { get; set; }
 
         [ProtoMember(3, IsRequired = true)]
+        public string Type { get; set; }
+
+        [ProtoMember(4, IsRequired = true)]
         public byte[] Data { get; set; }
     }
 }

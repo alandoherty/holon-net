@@ -130,6 +130,14 @@ namespace Holon
         public Task<BrokerMessage> ReceiveAsync(TimeSpan timeout, CancellationToken cancellationToken) {
             return _mailbox.ReceiveAsync(timeout, cancellationToken);
         }
+
+        /// <summary>
+        /// Creates an observable for this consumer.
+        /// </summary>
+        /// <returns></returns>
+        public IObservable<BrokerMessage> AsObservable() {
+            return _mailbox.AsObservable();
+        }
         #endregion
 
         #region Constructors

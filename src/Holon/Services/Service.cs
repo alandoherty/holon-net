@@ -18,7 +18,6 @@ namespace Holon.Services
         private Node _node;
         private ServiceAddress _addr;
         private Broker _broker;
-        private bool _disposed;
         private BrokerQueue _queue;
         private IServiceBehaviour _behaviour;
         private CancellationTokenSource _loopCancel;
@@ -30,6 +29,8 @@ namespace Holon.Services
         private int _requestsFaulted = 0;
 
         private SemaphoreSlim _concurrencySlim;
+
+        private int _disposed;
         #endregion
 
         #region Properties
@@ -126,7 +127,7 @@ namespace Holon.Services
         /// </summary>
         /// <param name="e">The exception event args.</param>
         /// <returns>If the exception was handled.</returns>
-        protected bool OnUnhandledException(ServiceExceptionEventArgs e) {
+        private bool OnUnhandledException(ServiceExceptionEventArgs e) {
             if (UnhandledException == null)
                 return false;
 
@@ -140,24 +141,19 @@ namespace Holon.Services
         /// Disposes the service.
         /// </summary>
         public void Dispose() {
-            if (_disposed)
+            if (Interlocked.CompareExchange(ref _disposed, 1, 0) == 1)
                 return;
-            _disposed = true;
-
-#if DEBUG_DISPOSE
-            Debug.WriteLine("> Service::Dispose: {0}", _addr);
-#endif
 
             // cancel loop
             if (_loopCancel != null)
                 _loopCancel.Cancel();
 
             // dispose of queue
+            _queue.Unbind(_addr.Namespace, _addr.RoutingKey);
             _queue.Dispose();
 
-#if DEBUG_DISPOSE
-            Debug.WriteLine("< Service::Disposed: {0}", _addr);
-#endif
+            // detach from node
+            _node.Detach(this);
         }
 
         /// <summary>
@@ -239,11 +235,9 @@ namespace Holon.Services
             try {
                 // increment pending metric
                 Interlocked.Increment(ref _requestsPending);
-
-                if (_behaviour is IAsyncServiceBehaviour)
-                    await ((IAsyncServiceBehaviour)_behaviour).HandleAsync(envelope).ConfigureAwait(false);
-                else
-                    await Task.Run(() => _behaviour.Handle(envelope)).ConfigureAwait(false);
+                
+                // handle
+                await _behaviour.HandleAsync(envelope).ConfigureAwait(false);
 
                 // release semaphore
                 try {
@@ -278,10 +272,7 @@ namespace Holon.Services
         /// </summary>
         /// <param name="envelope">The envelope.</param>
         private Task ServiceHandleAsync(Envelope envelope) {
-            if (_behaviour is IAsyncServiceBehaviour)
-                return ((IAsyncServiceBehaviour)_behaviour).HandleAsync(envelope);
-            else
-                return Task.Run(() => _behaviour.Handle(envelope));
+            return _behaviour.HandleAsync(envelope);
         }
 
         /// <summary>

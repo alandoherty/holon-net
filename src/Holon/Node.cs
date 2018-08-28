@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -12,6 +14,9 @@ using Holon.Introspection;
 using Holon.Metrics;
 using Holon.Remoting;
 using Holon.Services;
+using Newtonsoft.Json;
+using ProtoBuf;
+using ProtoBuf.Meta;
 
 namespace Holon
 {
@@ -515,17 +520,18 @@ namespace Holon
         /// Detaches a service from the node.
         /// </summary>
         /// <param name="service">The service.</param>
-        /// <returns></returns>
-        public Task DetachAsync(Service service) {
-            // dispose
-            service.Dispose();
-
+        public void Detach(Service service) {
             // remove service
             lock(_services) {
+                if (!_services.Contains(service))
+                    return;
+
+                // remove from list
                 _services.Remove(service);
             }
 
-            return Task.FromResult(true);
+            // dispose
+            service.Dispose();
         }
 
         /// <summary>
@@ -612,12 +618,11 @@ namespace Holon
         /// <summary>
         /// Declares the event, creating the namespace and storing the type for future reference.
         /// </summary>
-        /// <typeparam name="TData">The data type.</typeparam>
         /// <param name="addr">The event address.</param>
         /// <note>Currently the only behaviour is to declare the namespace.</note>
         /// <returns></returns>
         /// <exception cref="FormatException">If the event address is invalid.</exception>
-        private async Task DeclareEventAsync<TData>(EventAddress addr) {
+        private async Task DeclareEventAsync(EventAddress addr) {
             // check if already declared
             lock (_declaredEventNamespaces) {
                 if (_declaredEventNamespaces.Contains(addr.Namespace))
@@ -649,12 +654,11 @@ namespace Holon
         /// <summary>
         /// Emits an event on the provided address.
         /// </summary>
-        /// <typeparam name="TData">The event data type.</typeparam>
         /// <param name="addr">The event address.</param>
         /// <param name="data">The event data.</param>
         /// <exception cref="FormatException">If the event address is invalid.</exception>
         /// <returns></returns>
-        public async Task EmitAsync<TData>(EventAddress addr, TData data) {
+        public async Task EmitAsync(EventAddress addr, object data) {
             // check if not declared
             bool declared = false;
 
@@ -663,11 +667,15 @@ namespace Holon
             }
 
             if (!declared)
-                await DeclareEventAsync<TData>(addr).ConfigureAwait(false);
+                await DeclareEventAsync(addr).ConfigureAwait(false);
+
+            // serialize data payload
+            Event e = new Event(addr.Resource, addr.Name);
+            e.Serialize(data);
 
             // serialize
             ProtobufEventSerializer serializer = new ProtobufEventSerializer();
-            byte[] body = serializer.SerializeEvent(new Event(addr.Name, null/*data*/));
+            byte[] body = serializer.SerializeEvent(e);
 
             // send event
             try {
@@ -680,21 +688,20 @@ namespace Holon
         /// <summary>
         /// Emits an event on the provided address.
         /// </summary>
-        /// <typeparam name="TData">The event data type.</typeparam>
         /// <param name="addr">The event address.</param>
         /// <param name="data">The event data.</param>
+        /// <exception cref="FormatException">If the event address is invalid.</exception>
         /// <returns></returns>
-        public Task EmitAsync<TData>(string addr, TData data) {
-            return EmitAsync(new EventAddress(addr), data);
+        public Task EmitAsync(string addr, object data) {
+            return EmitAsync(addr, data);
         }
-
+        
         /// <summary>
         /// Subscribes to events matching the provided name.
         /// </summary>
-        /// <typeparam name="TData">The data type.</typeparam>
         /// <param name="addr">The event address.</param>
         /// <returns>The subscription.</returns>
-        public async Task<Subscription<TData>> SubscribeAsync<TData>(EventAddress addr) {
+        public async Task<EventSubscription> SubscribeAsync(EventAddress addr) {
             // create the queue
             await _broker.DeclareExchange(string.Format("!{0}", addr.Namespace), "topic", false, false).ConfigureAwait(false);
             BrokerQueue brokerQueue = null;
@@ -708,20 +715,19 @@ namespace Holon
 
                 brokerQueue = await _broker.CreateQueueAsync(string.Format("!{0}%{1}", addr.ToString(), uniqueIdStr), false, true, string.Format("!{0}", addr.Namespace), addr.Name, null).ConfigureAwait(false);
             }
-            
 
             // create subscription
-            return new Subscription<TData>(addr, this, brokerQueue);
+            return new EventSubscription(addr, this, brokerQueue);
         }
 
         /// <summary>
         /// Subscribes to events matching the provided name.
         /// </summary>
-        /// <typeparam name="TData">The data type.</typeparam>
         /// <param name="addr">The event address.</param>
+        /// <param name="typeMap">The type map.</param>
         /// <returns>The subscription.</returns>
-        public Task<Subscription<TData>> SubscribeAsync<TData>(string addr) {
-            return SubscribeAsync<TData>(new EventAddress(addr));
+        public Task<EventSubscription> SubscribeAsync(string addr) {
+            return SubscribeAsync(new EventAddress(addr));
         }
         #endregion
 

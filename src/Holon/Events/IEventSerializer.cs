@@ -18,9 +18,8 @@ namespace Holon.Events
         /// Deserializes the event.
         /// </summary>
         /// <param name="body">The event body.</param>
-        /// <param name="type">The event type.</param>
         /// <returns>The event.</returns>
-        Event DeserializeEvent(byte[] body, Type type);
+        Event DeserializeEvent(byte[] body);
 
         /// <summary>
         /// Serializes the event.
