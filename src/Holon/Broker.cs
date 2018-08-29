@@ -18,6 +18,7 @@ namespace Holon
         private bool _disposed;
         private IModel _channel;
         private BrokerContext _ctx;
+        private string _appId;
         #endregion
 
         #region Properties
@@ -254,8 +255,10 @@ namespace Holon
         /// </summary>
         /// <param name="ctx">The context.</param>
         /// <param name="channel">The channel.</param>
-        internal Broker(BrokerContext ctx, IModel channel) {
+        /// <param name="appId">The application ID.</param>
+        internal Broker(BrokerContext ctx, IModel channel, string appId) {
             _ctx = ctx;
+            _appId = appId;
             _channel = channel;
             _channel.BasicReturn += delegate (object s, RabbitMQ.Client.Events.BasicReturnEventArgs e) {
                 OnReturned(new BrokerReturnedEventArgs(e.BasicProperties, e.Body, e.ReplyText));

@@ -58,15 +58,16 @@ namespace Holon
         /// <summary>
         /// Attaches a new broker to the context.
         /// </summary>
+        /// <param name="appId">The application ID.</param>
         /// <returns></returns>
-        public async Task<Broker> CreateBrokerAsync() {
+        public async Task<Broker> CreateBrokerAsync(string appId) {
             // create a new channel
             IModel channel = await AskWork<IModel>(delegate () {
                 return _connection.CreateModel();
             }).ConfigureAwait(false);
 
             // create broker
-            Broker broker = new Broker(this, channel);
+            Broker broker = new Broker(this, channel, appId);
 
             // add to brokers list
             _brokers.Add(broker);

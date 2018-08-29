@@ -83,6 +83,18 @@ namespace Holon.Remoting
         /// <typeparam name="IT">The interface type.</typeparam>
         /// <param name="node">The node.</param>
         /// <param name="address">The service address.</param>
+        /// <param name="configuration">The configuration.</param>
+        /// <returns></returns>
+        public static IT Proxy<IT>(this Node node, string address, ProxyConfiguration configuration) {
+            return Proxy<IT>(node, address, configuration);
+        }
+
+        /// <summary>
+        /// Gets an RPC proxy for the provided interface.
+        /// </summary>
+        /// <typeparam name="IT">The interface type.</typeparam>
+        /// <param name="node">The node.</param>
+        /// <param name="address">The service address.</param>
         /// <returns></returns>
         public static IT Proxy<IT>(this Node node, ServiceAddress address) {
             return Proxy<IT>(node, address, new ProxyConfiguration() { });

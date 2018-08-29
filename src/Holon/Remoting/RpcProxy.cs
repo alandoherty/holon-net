@@ -12,7 +12,7 @@ namespace Holon.Remoting
     /// Provides functionality to proxy calls for an RPC interface.
     /// </summary>
     /// <typeparam name="T">The interface.</typeparam>
-    public sealed class RpcProxy<T> : DispatchProxy
+    public class RpcProxy<T> : DispatchProxy
     {
         #region Fields
         private Node _node;

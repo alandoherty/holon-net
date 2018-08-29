@@ -39,13 +39,7 @@ namespace Example.General
 
         public async Task Login(LoginRequestMsg login) {
             Console.WriteLine($"Worker Waiting {i} - Username: {login.Username} Password: {login.Password}");
-            await Task.Delay(15000);
         }
-    }
-
-    class EventTest
-    {
-        public int Wow { get; set; }
     }
 
     class Program
@@ -56,24 +50,29 @@ namespace Example.General
 
         public static async void ReadLoop(Node node) {
             // subscribe
-            EventSubscription subscription = await node.SubscribeAsync("user:alan.*");
-
             while (true) {
-                Event e = await subscription.ReceiveAsync();
+                ITest001 proxy = node.Proxy<ITest001>("auth:test");
+
+                try {
+                    await proxy.Login(new LoginRequestMsg() {
+                        Password = "wow",
+                        Username = "alan"
+                    });
+                } catch(Exception ex) {
+                    Console.WriteLine(ex.ToString());
+                }
+
+                await Task.Delay(3000);
             }
         }
 
         static async Task AsyncMain(string[] args) {
             // attach node
             Node node = await Node.CreateFromEnvironmentAsync();
+            
+            await node.AttachAsync("auth:test", RpcBehaviour.Bind<ITest001>(new Test001()));
 
             ReadLoop(node);
-
-            await Task.Delay(5000);
-
-            await node.EmitAsync("user:alan.name_changed", new EventTest() {
-                Wow = 39
-            });
 
             await Task.Delay(50000);
         }

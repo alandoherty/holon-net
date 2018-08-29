@@ -60,7 +60,7 @@ namespace Holon
         /// <summary>
         /// </summary>
         /// <param name="e">The event arguments.</param>
-        protected void OnUnroutableReply(UnroutableReplyEventArgs e) {
+        private void OnUnroutableReply(UnroutableReplyEventArgs e) {
             UnroutableReply?.Invoke(this, e);
         }
         #endregion
@@ -330,7 +330,7 @@ namespace Holon
             }
 
             // wait for reconnect
-            _broker = await _broker.Context.CreateBrokerAsync().ConfigureAwait(false);
+            _broker = await _broker.Context.CreateBrokerAsync(_configuration.ApplicationId).ConfigureAwait(false);
 
             // setup
             await SetupAsync().ConfigureAwait(false);
@@ -419,7 +419,7 @@ namespace Holon
 
             // setup service
             if (_queryService == null) {
-                _queryService = await AttachAsync(string.Format("node:{0}", _uuid), ServiceType.Singleton, ServiceExecution.Parallel, RpcBehaviour.BindOne<INodeQuery001>(new NodeQueryImpl(this))).ConfigureAwait(false);
+                _queryService = await AttachAsync(string.Format("node:{0}", _uuid), ServiceType.Singleton, ServiceExecution.Parallel, RpcBehaviour.Bind<INodeQuery001>(new NodeQueryImpl(this))).ConfigureAwait(false);
             }
 
             // start reply processor
@@ -445,6 +445,17 @@ namespace Holon
             }
 
             return service;
+        }
+
+        /// <summary>
+        /// Attaches the service provider to the address.
+        /// </summary>
+        /// <param name="addr">The service address.</param>
+        /// <param name="configuration">The service configuration.</param>
+        /// <param name="behaviour">The service behaviour.</param>
+        /// <returns>The attached service.</returns>
+        public Task<Service> AttachAsync(string addr, ServiceConfiguration configuration, IServiceBehaviour behaviour) {
+            return AttachAsync(new ServiceAddress(addr), configuration, behaviour);
         }
 
         /// <summary>
@@ -724,7 +735,6 @@ namespace Holon
         /// Subscribes to events matching the provided name.
         /// </summary>
         /// <param name="addr">The event address.</param>
-        /// <param name="typeMap">The type map.</param>
         /// <returns>The subscription.</returns>
         public Task<EventSubscription> SubscribeAsync(string addr) {
             return SubscribeAsync(new EventAddress(addr));
@@ -750,7 +760,7 @@ namespace Holon
             BrokerContext ctx = await BrokerContext.CreateAsync(endpoint);
 
             // create broker
-            Broker broker = await ctx.CreateBrokerAsync();
+            Broker broker = await ctx.CreateBrokerAsync(configuration.ApplicationId);
 
             // create node
             Node node = new Node(broker, configuration);

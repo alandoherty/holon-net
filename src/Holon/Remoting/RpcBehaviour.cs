@@ -229,8 +229,8 @@ namespace Holon.Remoting
         /// <typeparam name="IT">The interface type.</typeparam>
         /// <param name="interfaceBehaviour">The implementation of the interface behaviour.</param>
         /// <returns></returns>
-        public static RpcBehaviour BindOne<IT>(IT interfaceBehaviour) {
-            return BindOne(typeof(IT), interfaceBehaviour);
+        public static RpcBehaviour Bind<IT>(IT interfaceBehaviour) {
+            return Bind(typeof(IT), interfaceBehaviour);
         }
 
         /// <summary>
@@ -239,9 +239,9 @@ namespace Holon.Remoting
         /// <param name="interfaceType">The interface type.</param>
         /// <param name="interfaceBehaviour">The implementation of the interface behaviour.</param>
         /// <returns></returns>
-        public static RpcBehaviour BindOne(Type interfaceType, object interfaceBehaviour) {
+        public static RpcBehaviour Bind(Type interfaceType, object interfaceBehaviour) {
             RpcBehaviour rpcBehaviour = new RpcBehaviour();
-            rpcBehaviour.Bind(interfaceType, interfaceBehaviour);
+            rpcBehaviour.Attach(interfaceType, interfaceBehaviour);
             return rpcBehaviour;
         }
 
@@ -251,9 +251,9 @@ namespace Holon.Remoting
         /// <param name="interfaceTypes">The interface types.</param>
         /// <param name="interfaceBehaviours">The interface behaviours.</param>
         /// <returns></returns>
-        public static RpcBehaviour BindAll(Type[] interfaceTypes, object[] interfaceBehaviours) {
+        public static RpcBehaviour BindMany(Type[] interfaceTypes, object[] interfaceBehaviours) {
             RpcBehaviour rpcBehaviour = new RpcBehaviour();
-            rpcBehaviour.BindMany(interfaceTypes, interfaceBehaviours);
+            rpcBehaviour.Attach(interfaceTypes, interfaceBehaviours);
             return rpcBehaviour;
         }
 
@@ -262,8 +262,8 @@ namespace Holon.Remoting
         /// </summary>
         /// <typeparam name="T">The interface type.</typeparam>
         /// <param name="interfaceBehaviour">The interface behaviour.</param>
-        public void Bind<T>(T interfaceBehaviour)  {
-            Bind(typeof(T), interfaceBehaviour);
+        public void Attach<T>(T interfaceBehaviour)  {
+            Attach(typeof(T), interfaceBehaviour);
         }
 
         /// <summary>
@@ -271,7 +271,7 @@ namespace Holon.Remoting
         /// </summary>
         /// <param name="interfaceType">The interface type.</param>
         /// <param name="interfaceBehaviour">The interface behaviours.</param>
-        public void Bind(Type interfaceType, object interfaceBehaviour) {
+        public void Attach(Type interfaceType, object interfaceBehaviour) {
             if (!interfaceType.GetTypeInfo().IsInterface)
                 throw new InvalidOperationException("You must bind the interface type, not the behaviour type");
 
@@ -288,7 +288,7 @@ namespace Holon.Remoting
         /// </summary>
         /// <param name="interfaceTypes">The interface types.</param>
         /// <param name="interfaceBehaviours">The interface behaviours.</param>
-        public void BindMany(Type[] interfaceTypes, object[] interfaceBehaviours) {
+        public void Attach(Type[] interfaceTypes, object[] interfaceBehaviours) {
             for (int i = 0; i < interfaceTypes.Length; i++) {
                 if (!interfaceTypes[i].GetTypeInfo().IsInterface)
                     throw new InvalidOperationException("You must bind the interface type, not the behaviour type");
@@ -453,7 +453,7 @@ namespace Holon.Remoting
         /// </summary>
         /// <param name="introspection">If to bind introspection.</param>
         public RpcBehaviour(bool introspection) {
-            Bind<IInterfaceQuery001>(new QueryInterface(this));
+            Attach<IInterfaceQuery001>(new QueryInterface(this));
         }
         #endregion
     }
