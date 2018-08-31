@@ -5,6 +5,7 @@ using System.IO;
 using System.Text;
 using System.Xml.Serialization;
 using Holon.Services;
+using ProtoBuf;
 
 namespace Holon
 {
@@ -16,6 +17,7 @@ namespace Holon
         #region Fields
         private Node _node;
         private BrokerMessage _msg;
+        private byte[] _body;
         #endregion
 
         #region Properties
@@ -83,22 +85,42 @@ namespace Holon
         }
 
         /// <summary>
+        /// Gets the message payload.
+        /// </summary>
+        public byte[] RawBody {
+            get {
+                return _msg.Body;
+            }
+        }
+
+        /// <summary>
         /// Gets the envelope payload.
         /// </summary>
         public byte[] Body {
             get {
-                return _msg.Body;
+                return _body;
             }
         }
         #endregion
 
         #region Methods
         /// <summary>
+        /// Deserializes the body as a protobuf contract.
+        /// </summary>
+        /// <typeparam name="T">The type.</typeparam>
+        /// <returns>The deserialized object.</returns>
+        public T AsProtoBuf<T>() {
+            using (Stream bodyStream = AsStream()) {
+                return Serializer.Deserialize<T>(bodyStream);
+            }
+        }
+
+        /// <summary>
         /// Creates a stream from the message body.
         /// </summary>
         /// <returns></returns>
         public Stream AsStream() {
-            return new MemoryStream(_msg.Body);
+            return new MemoryStream(Body);
         }
 
         /// <summary>
@@ -128,6 +150,17 @@ namespace Holon
         public string AsString(Encoding encoding) {
             return encoding.GetString(Body);
         }
+
+        /// <summary>
+        /// Creates a copy of this envelope with a new body.
+        /// </summary>
+        /// <param name="body">The body.</param>
+        /// <returns></returns>
+        public Envelope Transform(byte[] body) {
+            return new Envelope(_msg, _node) {
+                _body = body
+            };
+        }
         #endregion
 
         #region Constructors
@@ -139,6 +172,7 @@ namespace Holon
         internal Envelope(BrokerMessage msg, Node node) {
             _msg = msg;
             _node = node;
+            _body = msg.Body;
         }
         #endregion
     }

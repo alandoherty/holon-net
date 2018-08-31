@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -9,6 +10,7 @@ using Holon.Events;
 using Holon.Introspection;
 using Holon.Metrics;
 using Holon.Remoting;
+using Holon.Remoting.Security;
 using Holon.Remoting.Serializers;
 using Holon.Services;
 using ProtoBuf;
@@ -28,8 +30,8 @@ namespace Example.General
     [RpcContract]
     interface ITest001
     {
-        [RpcOperation(NoReply = true)]
-        Task Login(LoginRequestMsg login);
+        [RpcOperation(NoReply = false)]
+        Task<string> Login(LoginRequestMsg login);
     }
 
     class Test001 : ITest001
@@ -37,8 +39,9 @@ namespace Example.General
         static int si = 0;
         int i = Interlocked.Increment(ref si);
 
-        public async Task Login(LoginRequestMsg login) {
+        public async Task<string> Login(LoginRequestMsg login) {
             Console.WriteLine($"Worker Waiting {i} - Username: {login.Username} Password: {login.Password}");
+            return "landlocked";
         }
     }
 
@@ -49,15 +52,17 @@ namespace Example.General
         private static bool go = true;
 
         public static async void ReadLoop(Node node) {
-            // subscribe
             while (true) {
-                ITest001 proxy = node.Proxy<ITest001>("auth:test");
+                ITest001 proxy = node.SecureProxy<ITest001>("auth:test", new SecureProxyConfiguration() {
+                });
 
                 try {
-                    await proxy.Login(new LoginRequestMsg() {
+                    string s = await proxy.Login(new LoginRequestMsg() {
                         Password = "wow",
                         Username = "alan"
                     });
+
+                    Console.WriteLine($"String: {s}");
                 } catch(Exception ex) {
                     Console.WriteLine(ex.ToString());
                 }
@@ -68,9 +73,11 @@ namespace Example.General
 
         static async Task AsyncMain(string[] args) {
             // attach node
-            Node node = await Node.CreateFromEnvironmentAsync();
+            Node node = await Node.CreateFromEnvironmentAsync(new NodeConfiguration() {
+                ThrowUnhandledExceptions = true
+            });
             
-            await node.AttachAsync("auth:test", RpcBehaviour.Bind<ITest001>(new Test001()));
+            await node.AttachAsync("auth:test", RpcSecureBehaviour.BindSecure<ITest001>(new X509Certificate2("public_privatekey.pfx"), "bacon", new Test001()));
 
             ReadLoop(node);
 

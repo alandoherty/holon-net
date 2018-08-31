@@ -35,5 +35,10 @@ namespace Holon
         /// </summary>
         [ProtoMember(4)]
         public bool Metrics { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets if unhandled service exceptions should be thrown.
+        /// </summary>
+        public bool ThrowUnhandledExceptions { get; set; } = false;
     }
 }

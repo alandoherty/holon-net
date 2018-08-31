@@ -433,9 +433,13 @@ namespace Holon
         /// <param name="configuration">The service configuration.</param>
         /// <param name="behaviour">The service behaviour.</param>
         /// <returns>The attached service.</returns>
-        public async Task<Service> AttachAsync(ServiceAddress addr, ServiceConfiguration configuration, IServiceBehaviour behaviour) {
+        public async Task<Service> AttachAsync(ServiceAddress addr, ServiceConfiguration configuration, ServiceBehaviour behaviour) {
             // create service
             Service service = new Service(this, _broker, addr, behaviour, configuration);
+
+            if (_configuration.ThrowUnhandledExceptions) {
+                service.UnhandledException += (o, e) => throw e.Exception;
+            }
 
             // create queue
             await service.SetupAsync().ConfigureAwait(false);
@@ -454,7 +458,7 @@ namespace Holon
         /// <param name="configuration">The service configuration.</param>
         /// <param name="behaviour">The service behaviour.</param>
         /// <returns>The attached service.</returns>
-        public Task<Service> AttachAsync(string addr, ServiceConfiguration configuration, IServiceBehaviour behaviour) {
+        public Task<Service> AttachAsync(string addr, ServiceConfiguration configuration, ServiceBehaviour behaviour) {
             return AttachAsync(new ServiceAddress(addr), configuration, behaviour);
         }
 
@@ -466,7 +470,7 @@ namespace Holon
         /// <param name="execution">The service execution.</param>
         /// <param name="behaviour">The service behaviour.</param>
         /// <returns>The attached service.</returns>
-        public Task<Service> AttachAsync(ServiceAddress addr, ServiceType type, ServiceExecution execution, IServiceBehaviour behaviour) {
+        public Task<Service> AttachAsync(ServiceAddress addr, ServiceType type, ServiceExecution execution, ServiceBehaviour behaviour) {
             return AttachAsync(addr, new ServiceConfiguration() {
                 Type = type,
                 Execution = execution
@@ -481,7 +485,7 @@ namespace Holon
         /// <param name="execution">The service execution.</param>
         /// <param name="behaviour">The behaviour.</param>
         /// <returns>The attached service.</returns>
-        public Task<Service> AttachAsync(string addr, ServiceType type, ServiceExecution execution, IServiceBehaviour behaviour) {
+        public Task<Service> AttachAsync(string addr, ServiceType type, ServiceExecution execution, ServiceBehaviour behaviour) {
             return AttachAsync(new ServiceAddress(addr), type, execution, behaviour);
         }
 
@@ -492,7 +496,7 @@ namespace Holon
         /// <param name="type">The service type.</param>
         /// <param name="behaviour">The behaviour.</param>
         /// <returns></returns>
-        public Task<Service> AttachAsync(string addr, ServiceType type, IServiceBehaviour behaviour) {
+        public Task<Service> AttachAsync(string addr, ServiceType type, ServiceBehaviour behaviour) {
             return AttachAsync(new ServiceAddress(addr), type, ServiceExecution.Serial, behaviour);
         }
 
@@ -503,7 +507,7 @@ namespace Holon
         /// <param name="type">The service type.</param>
         /// <param name="behaviour">The behaviour.</param>
         /// <returns></returns>
-        public Task<Service> AttachAsync(ServiceAddress addr, ServiceType type, IServiceBehaviour behaviour) {
+        public Task<Service> AttachAsync(ServiceAddress addr, ServiceType type, ServiceBehaviour behaviour) {
             return AttachAsync(addr, type, ServiceExecution.Serial, behaviour);
         }
 
@@ -513,7 +517,7 @@ namespace Holon
         /// <param name="addr">The service address.</param>
         /// <param name="behaviour">The service behaviour.</param>
         /// <returns></returns>
-        public Task<Service> AttachAsync(ServiceAddress addr, IServiceBehaviour behaviour) {
+        public Task<Service> AttachAsync(ServiceAddress addr, ServiceBehaviour behaviour) {
             return AttachAsync(addr, ServiceType.Fanout, ServiceExecution.Serial, behaviour);
         }
 
@@ -523,7 +527,7 @@ namespace Holon
         /// <param name="addr">The service address.</param>
         /// <param name="behaviour">The service behaviour.</param>
         /// <returns></returns>
-        public Task<Service> AttachAsync(string addr, IServiceBehaviour behaviour) {
+        public Task<Service> AttachAsync(string addr, ServiceBehaviour behaviour) {
             return AttachAsync(new ServiceAddress(addr), ServiceType.Fanout, ServiceExecution.Serial, behaviour);
         }
 
@@ -766,6 +770,9 @@ namespace Holon
             Node node = new Node(broker, configuration);
             node._brokerContext = ctx;
             node._broker = broker;
+
+            // setup node
+            await node.SetupAsync();
 
             return node;
         }

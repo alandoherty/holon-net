@@ -19,7 +19,7 @@ namespace Holon.Services
         private ServiceAddress _addr;
         private Broker _broker;
         private BrokerQueue _queue;
-        private IServiceBehaviour _behaviour;
+        private ServiceBehaviour _behaviour;
         private CancellationTokenSource _loopCancel;
         private ServiceConfiguration _configuration;
 
@@ -91,7 +91,7 @@ namespace Holon.Services
         /// <summary>
         /// Gets the underlying behaviour.
         /// </summary>
-        public IServiceBehaviour Behaviour {
+        public ServiceBehaviour Behaviour {
             get {
                 return _behaviour;
             }
@@ -346,7 +346,7 @@ namespace Holon.Services
         #endregion
 
         #region Constructors
-        internal Service(Node node, Broker broker, ServiceAddress addr, IServiceBehaviour behaviour, ServiceConfiguration configuration) {
+        internal Service(Node node, Broker broker, ServiceAddress addr, ServiceBehaviour behaviour, ServiceConfiguration configuration) {
             if (configuration == null)
                 throw new ArgumentNullException(nameof(configuration));
 
@@ -366,7 +366,7 @@ namespace Holon.Services
     {
         #region Fields
         private Exception _exception;
-        private IServiceBehaviour _behaviour;
+        private ServiceBehaviour _behaviour;
         #endregion
 
         #region Properties
@@ -382,7 +382,7 @@ namespace Holon.Services
         /// <summary>
         /// Gets the behaviour which raised the exception.
         /// </summary>
-        public IServiceBehaviour Behaviour {
+        public ServiceBehaviour Behaviour {
             get {
                 return _behaviour;
             }
@@ -395,7 +395,7 @@ namespace Holon.Services
         /// </summary>
         /// <param name="behaviour">The behaviour which raised the exception.</param>
         /// <param name="ex">The exception.</param>
-        public ServiceExceptionEventArgs(IServiceBehaviour behaviour, Exception ex) {
+        public ServiceExceptionEventArgs(ServiceBehaviour behaviour, Exception ex) {
             _behaviour = behaviour;
             _exception = ex;
         }

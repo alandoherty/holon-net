@@ -13,7 +13,7 @@ namespace Holon.Remoting
     /// <summary>
     /// Provides RPC functionality for a service
     /// </summary>
-    public sealed class RpcBehaviour : IServiceBehaviour
+    public class RpcBehaviour : ServiceBehaviour
     {
         #region Fields
         internal static string[] StandardErrors = new string[] { "InterfaceNotFound", "OperationNotFound", "ArgumentRequired", "ArgumentMissing", "InvalidOperation", "Exception" };
@@ -34,19 +34,11 @@ namespace Holon.Remoting
 
         #region Methods
         /// <summary>
-        /// Handles the incoming envelope syncronously.
-        /// </summary>
-        /// <param name="envelope">The envelope.</param>
-        public void Handle(Envelope envelope) {
-            throw new NotImplementedException("This is never used");
-        }
-
-        /// <summary>
         /// Handles the incoming envelope.
         /// </summary>
         /// <param name="envelope">The envelope.</param>
         /// <returns></returns>
-        public Task HandleAsync(Envelope envelope) {
+        public override Task HandleAsync(Envelope envelope) {
             // try and get the header info
             if (!envelope.Headers.TryGetValue(RpcHeader.HEADER_NAME, out object rpcHeader))
                 throw new InvalidOperationException("The incoming envelope is not a valid RPC message");
@@ -59,6 +51,17 @@ namespace Holon.Remoting
             } else {
                 throw new NotSupportedException("The RPC version is not supported");
             }
+        }
+
+        /// <summary>
+        /// Replies to the provided envelope with the body and headers.
+        /// </summary>
+        /// <param name="envelope">The envelope.</param>
+        /// <param name="body">The body.</param>
+        /// <param name="headers">The headers.</param>
+        /// <returns></returns>
+        protected virtual Task ReplyAsync(Envelope envelope, byte[] body, IDictionary<string, object> headers) {
+            return envelope.Node.ReplyAsync(envelope.ReplyTo, envelope.ID, headers, body);
         }
 
         /// <summary>
@@ -124,9 +127,12 @@ namespace Holon.Remoting
                     byte[] resBody = serializer.SerializeResponse(res);
 
                     // send reply
-                    await envelope.Node.ReplyAsync(envelope.ReplyTo, envelope.ID, new Dictionary<string, object>() {
+                    Dictionary<string, object> headers = new Dictionary<string, object>() {
                         { RpcHeader.HEADER_NAME, new RpcHeader(RpcHeader.HEADER_VERSION, serializer.Name, RpcMessageType.Single).ToString() }
-                    }, resBody).ConfigureAwait(false);
+                    };
+
+                    // reply
+                    await ReplyAsync(envelope, resBody, headers).ConfigureAwait(false);
                 }
 
                 // throw exceptions
