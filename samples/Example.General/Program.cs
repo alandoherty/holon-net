@@ -52,10 +52,12 @@ namespace Example.General
         private static bool go = true;
 
         public static async void ReadLoop(Node node) {
-            while (true) {
-                ITest001 proxy = node.SecureProxy<ITest001>("auth:test", new SecureProxyConfiguration() {
-                });
+            ITest001 proxy = node.SecureProxy<ITest001>("auth:test", new SecureProxyConfiguration() {
+                ValidateAuthority = false,
+                ValidateAddress = false
+            });
 
+            while (true) {
                 try {
                     string s = await proxy.Login(new LoginRequestMsg() {
                         Password = "wow",

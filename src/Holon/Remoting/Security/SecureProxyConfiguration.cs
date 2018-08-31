@@ -15,5 +15,17 @@ namespace Holon.Remoting
         /// Gets the root authority to validate the certificate during negociation.
         /// </summary>
         public X509Certificate2 RootAuthority { get; set; }
+
+        /// <summary>
+        /// Gets or sets if the certificate should be validated.
+        /// This should ALWAYS be true in production.
+        /// </summary>
+        public bool ValidateAuthority { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets if the certificate address should be validated.
+        /// This should ALWAYS be true in production.
+        /// </summary>
+        public bool ValidateAddress { get; set; } = true;
     }
 }

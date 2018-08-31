@@ -82,6 +82,30 @@ namespace Holon.Remoting.Security
             return keyBytes;
         }
 
+        /// <summary>
+        /// Sends a secure error reply to the envelope.
+        /// </summary>
+        /// <param name="envelope">The envelope.</param>
+        /// <param name="errorMsg">The error message.</param>
+        /// <returns></returns>
+        private async Task ReplyErrorAsync(Envelope envelope, RpcSecureErrorMsg errorMsg) {
+            using (MemoryStream ms = new MemoryStream()) {
+                Serializer.Serialize(ms, errorMsg);
+
+                // reply
+                await envelope.Node.ReplyAsync(envelope.ReplyTo, envelope.ID, new Dictionary<string, object>() {
+                    {RpcSecureHeader.HEADER_NAME, new RpcSecureHeader(RpcSecureHeader.HEADER_VERSION, RpcSecureMessageType.Error).ToString() }
+                }, ms.ToArray());
+            }
+        }
+
+        /// <summary>
+        /// Replies to the envelope.
+        /// </summary>
+        /// <param name="envelope">The nevelope.</param>
+        /// <param name="body">The response body.</param>
+        /// <param name="headers">The headers.</param>
+        /// <returns></returns>
         protected override Task ReplyAsync(Envelope envelope, byte[] body, IDictionary<string, object> headers) {
             // only apply encryption if this is a response message
             if (!envelope.Headers.ContainsKey(RpcSecureHeader.HEADER_NAME))
@@ -127,16 +151,27 @@ namespace Holon.Remoting.Security
             // check for secure header
             RpcSecureHeader secureHeader = null;
 
-            if (envelope.Headers.ContainsKey(RpcSecureHeader.HEADER_NAME))
-                secureHeader = new RpcSecureHeader(Encoding.UTF8.GetString(envelope.Headers[RpcSecureHeader.HEADER_NAME] as byte[]));
+            try {
+                if (envelope.Headers.ContainsKey(RpcSecureHeader.HEADER_NAME))
+                    secureHeader = new RpcSecureHeader(Encoding.UTF8.GetString(envelope.Headers[RpcSecureHeader.HEADER_NAME] as byte[]));
+            } catch(Exception) {
+                if (envelope.ID != Guid.Empty) {
+                    await ReplyErrorAsync(envelope, new RpcSecureErrorMsg() {
+                        Code = "ProtocolInvalid",
+                        Message = "The secure message header format is invalid"
+                    });
+                }
+
+                return;
+            }
 
             // check if it's a secure message or not
-            if (secureHeader != null) {
+            if (secureHeader != null && envelope.ID != Guid.Empty) {
                 if (secureHeader.Type == RpcSecureMessageType.RequestCertificate) {
-                    // check for correlation
-                    if (envelope.ID == Guid.Empty)
-                        throw new InvalidOperationException("The secure certificate request has no envelope ID");
-
+#if DEBUG_SECURERPC
+                    Console.WriteLine($"[SecureRpcBehaviour] {nameof(RpcSecureMessageType.RequestCertificate)}");
+#endif
+                    
                     // build response
                     RpcSecureRespondCertificateMsg respondCertificateMsg = new RpcSecureRespondCertificateMsg();
                     respondCertificateMsg.CertificateData = _certificate.Export(X509ContentType.Cert);
@@ -151,10 +186,6 @@ namespace Holon.Remoting.Security
                         }, ms.ToArray());
                     }
                 } else if (secureHeader.Type == RpcSecureMessageType.RequestKey) {
-                    // check for correlation
-                    if (envelope.ID == Guid.Empty)
-                        throw new InvalidOperationException("The secure key request has no envelope ID");
-
                     // decrypt
                     byte[] decryptedBody = null;
 
@@ -169,8 +200,15 @@ namespace Holon.Remoting.Security
                         requestKeyMsg = Serializer.Deserialize<RpcSecureRequestKeyMsg>(ms);
                     }
 
-                    if (requestKeyMsg.HandshakeIV == null || requestKeyMsg.HandshakeKey == null || requestKeyMsg.HandshakeIV.Length != 16 || requestKeyMsg.HandshakeKey.Length != 16)
-                        throw new InvalidDataException("The secure key request is invalid");
+                    // validate that the data is there and is the correct size, if not send an error back
+                    if (requestKeyMsg.HandshakeIV == null || requestKeyMsg.HandshakeKey == null || requestKeyMsg.HandshakeIV.Length != 16 || requestKeyMsg.HandshakeKey.Length != 16) {
+                        await ReplyErrorAsync(envelope, new RpcSecureErrorMsg() {
+                            Code = "ProtocolInvalid",
+                            Message = "The request key data was invalid"
+                        });
+
+                        return;
+                    }
 
                     // generate random nonce
                     byte[] nonceBytes = new byte[16];
@@ -182,6 +220,11 @@ namespace Holon.Remoting.Security
                     // process key request
                     long timeSlot = SecureUtils.GetNextTimeSlot();
                     byte[] keyBytes = GenerateKey(nonceBytes, timeSlot);
+
+                    // log
+#if DEBUG_SECURERPC
+                    Console.WriteLine($"[SecureRpcBehaviour] {nameof(RpcSecureMessageType.RequestKey)} TimeSlot: {timeSlot} Nonce: {BitConverter.ToString(nonceBytes).Replace("-", "")}");
+#endif
 
                     // build response
                     RpcSecureRespondKeyMsg respondKeyMsg = new RpcSecureRespondKeyMsg();
@@ -221,12 +264,30 @@ namespace Holon.Remoting.Security
                         msg = Serializer.Deserialize<RpcSecureMessageMsg>(ms);
                     }
 
-                    if (msg.Payload == null || msg.ServerNonce == null || msg.ServerNonce.Length != 16)
-                        throw new InvalidDataException("The secure message is invalid");
+                    // validate the data is there and is correct length, if not send invalid data
+                    if (msg.Payload == null || msg.ServerNonce == null || msg.ServerNonce.Length != 16) {
+                        await ReplyErrorAsync(envelope, new RpcSecureErrorMsg() {
+                            Code = "ProtocolInvalid",
+                            Message = "The request message data was invalid"
+                        });
+
+                        return;
+                    }
+
+                    // log
+#if DEBUG_SECURERPC
+                    Console.WriteLine($"[SecureRpcBehaviour] {nameof(RpcSecureMessageType.RequestMessage)} TimeSlot: {msg.KeyTimeSlot} Nonce: {BitConverter.ToString(msg.ServerNonce).Replace("-", "")}");
+#endif
 
                     // validate expiry of time slot
-                    if (SecureUtils.HasTimeSlotExpired(msg.KeyTimeSlot))
-                        throw new InvalidDataException("The secure message is encrypted with an expired key");
+                    if (SecureUtils.HasTimeSlotExpired(msg.KeyTimeSlot, true)) {
+                        await ReplyErrorAsync(envelope, new RpcSecureErrorMsg() {
+                            Code = "KeyExpired",
+                            Message = "The secure message is encrypted with an outdated key"
+                        });
+
+                        return;
+                    }
 
                     // get key
                     byte[] keyBytes = GenerateKey(msg.ServerNonce, msg.KeyTimeSlot);
@@ -247,7 +308,15 @@ namespace Holon.Remoting.Security
                         await base.HandleAsync(envelope.Transform(decryptedPayloadStream.ToArray()));
                     }
                 } else {
-                    throw new NotSupportedException("The secure request type is not supported");
+                    // log
+#if DEBUG_SECURERPC
+                    Console.WriteLine($"[SecureRpcBehaviour] Unimplemented message type!");
+#endif
+
+                    await ReplyErrorAsync(envelope, new RpcSecureErrorMsg() {
+                        Code = "ProtocolViolation",
+                        Message = "The message type is not relevant or is invalid"
+                    });
                 }
             } else {
                 await base.HandleAsync(envelope);

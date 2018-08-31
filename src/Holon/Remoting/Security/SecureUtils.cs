@@ -24,7 +24,7 @@ namespace Holon.Remoting.Security
 
             // get the next slot
             long nextSlot = currentSlot + 1;
-            DateTimeOffset nextSlotTime = DateTimeOffset.FromUnixTimeSeconds(currentSlot * TimeslotDuration);
+            DateTimeOffset nextSlotTime = DateTimeOffset.FromUnixTimeSeconds(nextSlot * TimeslotDuration);
 
             if (nextSlotTime - DateTimeOffset.UtcNow < TimeSpan.FromSeconds(TimeslotVariation))
                 return nextSlot;
@@ -35,22 +35,25 @@ namespace Holon.Remoting.Security
         /// <summary>
         /// Gets if a time slot has expired.
         /// Time slots are active for 30 minutes, the next or previous slot can be used 3 minutes after or before.
+        /// This expiry function should allow variation on the behaviour and not on the proxy, this was the proxy always renews early.
         /// </summary>
         /// <param name="timeSlot">The time slot.</param>
+        /// <param name="allowVariation">If expiry should allow the variation of 3 minutes.</param>
         /// <returns></returns>
-        public static bool HasTimeSlotExpired(long timeSlot) {
+        public static bool HasTimeSlotExpired(long timeSlot, bool allowVariation) {
             // get time slot time
             DateTimeOffset timeSlotTime = DateTimeOffset.FromUnixTimeSeconds(timeSlot * TimeslotDuration);
 
             // check if it's too early within variation
             if (timeSlotTime - DateTimeOffset.UtcNow > TimeSpan.FromSeconds(TimeslotVariation))
-                return false;
+                return true;
 
             // check if it's within expiry + variation
-            if (timeSlotTime + TimeSpan.FromSeconds(TimeslotDuration) + TimeSpan.FromSeconds(TimeslotVariation) < DateTimeOffset.UtcNow)
-                return false;
+            if (timeSlotTime + TimeSpan.FromSeconds(TimeslotDuration) 
+                + (allowVariation ? TimeSpan.FromSeconds(TimeslotVariation) : TimeSpan.Zero) < DateTimeOffset.UtcNow)
+                return true;
 
-            return true;
+            return false;
         }
     }
 }

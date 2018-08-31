@@ -122,6 +122,10 @@ namespace Holon.Remoting
             if (contractAttr == null)
                 throw new InvalidOperationException("A static RPC proxy must be decorated with a contract attribute");
 
+            // check configuration
+            if (configuration.ValidateAuthority && configuration.RootAuthority == null)
+                throw new InvalidOperationException("The authority cannot be validated without a root authority configured");
+
             // create proxy
             IT proxy = DispatchProxy.Create<IT, RpcSecureProxy<IT>>();
             RpcSecureProxy<IT> rpcProxy = (RpcSecureProxy<IT>)(object)proxy;

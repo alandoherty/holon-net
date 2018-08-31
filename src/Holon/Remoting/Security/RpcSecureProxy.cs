@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Security;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
@@ -51,7 +52,7 @@ namespace Holon.Remoting.Security
             await _handshakeSemaphore.WaitAsync();
 
             // check if we got raced
-            if (_serverEncryptionKey != null && !SecureUtils.HasTimeSlotExpired(_serverEncryptionKeyTimeSlot))
+            if (_serverEncryptionKey != null && !SecureUtils.HasTimeSlotExpired(_serverEncryptionKeyTimeSlot, false))
                 return;
                 
             try {
@@ -60,6 +61,11 @@ namespace Holon.Remoting.Security
 
                 // get certificate if we don't have it yet
                 if (_serverCertificate == null) {
+                    // log
+#if DEBUG_SECURERPC
+                    Console.WriteLine($"[SecureRpcProxy] Handshake Requesting certificate...");
+#endif
+
                     // request certificate 
                     RpcSecureHeader requestCertificate = new RpcSecureHeader(RpcSecureHeader.HEADER_VERSION, RpcSecureMessageType.RequestCertificate);
 
@@ -68,7 +74,7 @@ namespace Holon.Remoting.Security
                         { RpcSecureHeader.HEADER_NAME, requestCertificate.ToString() }
                     }, _configuration.Timeout);
 
-                    // parse response
+                    // parse response header
                     RpcSecureHeader respondCertHeader = null;
 
                     try {
@@ -77,37 +83,70 @@ namespace Holon.Remoting.Security
                         throw new InvalidDataException("The certificate request response header was invalid", ex);
                     }
 
-                    if (respondCertHeader.Type != RpcSecureMessageType.RespondCertificate)
-                        throw new InvalidDataException("The certificate request response header was invalid");
-                    else if (respondCertHeader.Type == RpcSecureMessageType.Error) {
+                    // check if the certificate response is an error or if it's an incorrect type
+                    if (respondCertHeader.Type == RpcSecureMessageType.Error) {
                         RpcSecureErrorMsg errorMsg = respondCert.AsProtoBuf<RpcSecureErrorMsg>();
-                        throw new NotImplementedException();
+
+                        throw new SecurityException($"{errorMsg.Message} ({errorMsg.Code})");
+                    } else if (respondCertHeader.Type != RpcSecureMessageType.RespondCertificate) {
+                        throw new InvalidDataException("The certificate request response header was invalid");
                     }
 
+                    // decode the certificate response and then check it has actual data
                     RpcSecureRespondCertificateMsg respondCertMsg = respondCert.AsProtoBuf<RpcSecureRespondCertificateMsg>();
 
                     if (respondCertMsg.CertificateData == null)
                         throw new InvalidDataException("The certificate request response was invalid");
 
-                    // create certificate
+                    // load certificate from response
                     X509Certificate2 cert = new X509Certificate2(respondCertMsg.CertificateData);
-
+                    
                     // validate it's allowed to act as this service
-                    if (cert.Extensions["HolonSecureServices"] == null)
-                        throw new InvalidDataException("The service certificate has no claim the operation");
+                    if (((SecureProxyConfiguration)_configuration).ValidateAddress) {
+                        // check extension is actually there
+                        if (cert.Extensions["HolonSecureServices"] == null)
+                            throw new InvalidDataException("The service certificate has no claim for the invoked operation");
 
-                    // parse
-                    X509Extension servicesExt = cert.Extensions["HolonSecureServices"];
+                        // parse extension
+                        X509Extension servicesExt = cert.Extensions["HolonSecureServices"];
 
-                    // validate that it's signed by ca
-                    X509Chain chain = new X509Chain();
-                    chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
-                    chain.ChainPolicy.ExtraStore.Add(((SecureProxyConfiguration)_configuration).RootAuthority);
+                    } else {
+#if DEBUG_SECURERPC
+                        Console.WriteLine($"[SecureRpcProxy] Handshake WARNING: Not validating services due to configuration!");
+#endif
+                    }
 
-                    if (chain.ChainStatus.First().Status != X509ChainStatusFlags.UntrustedRoot && chain.ChainStatus.First().Status != X509ChainStatusFlags.NoError)
-                        throw new InvalidDataException("The service certificate is not signed by the root authority");
+                    // validate that it's signed by ca authority
+                    if (((SecureProxyConfiguration)_configuration).ValidateAuthority) {
+                        X509Chain chain = new X509Chain();
+                        chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
+                        chain.ChainPolicy.ExtraStore.Add(((SecureProxyConfiguration)_configuration).RootAuthority);
+                        chain.Build(cert);
+
+                        // get status
+                        X509ChainStatus status = chain.ChainStatus.First();
+
+                        if (status.Status != X509ChainStatusFlags.UntrustedRoot && status.Status != X509ChainStatusFlags.NoError)
+                            throw new InvalidDataException("The service certificate is not signed by the root authority");
+                    } else {
+#if DEBUG_SECURERPC
+                        Console.WriteLine($"[SecureRpcProxy] Handshake WARNING: Not validating authority due to configuration!");
+#endif
+                    }
+
+                    // log
+#if DEBUG_SECURERPC
+                    Console.WriteLine($"[SecureRpcProxy] Handshake Got certifcate {cert.Subject} ({cert.Thumbprint})");
+#endif
+
+                    _serverCertificate = cert;
                 }
-                
+
+                // log
+#if DEBUG_SECURERPC
+                Console.WriteLine($"[SecureRpcProxy] Handshake Requesting key... FirstTime: {_serverEncryptionKey == null}");
+#endif
+
                 // key request
                 RpcSecureRequestKeyMsg requestKeyMsg = new RpcSecureRequestKeyMsg() {
                     HandshakeIV = _handshakeEncryptionIV,
@@ -141,11 +180,13 @@ namespace Holon.Remoting.Security
                     throw new InvalidDataException("The key request response header was invalid", ex);
                 }
 
-                if (respondKeyHeader.Type != RpcSecureMessageType.RespondKey)
-                    throw new InvalidDataException("The key request response was invalid");
-                else if (respondKeyHeader.Type == RpcSecureMessageType.Error) {
+                // check if the key response is an error or if it's an incorrect type
+                if (respondKeyHeader.Type == RpcSecureMessageType.Error) {
                     RpcSecureErrorMsg errorMsg = respondKey.AsProtoBuf<RpcSecureErrorMsg>();
-                    throw new NotImplementedException();
+
+                    throw new SecurityException($"{errorMsg.Message} ({errorMsg.Code})");
+                } else if (respondKeyHeader.Type != RpcSecureMessageType.RespondKey) {
+                    throw new InvalidDataException("The key request response header was invalid");
                 }
 
                 // try and decrypt
@@ -168,6 +209,11 @@ namespace Holon.Remoting.Security
                     // validate key
                     if (respondKeyMsg.ServerKey == null || respondKeyMsg.ServerNonce == null || respondKeyMsg.ServerKey.Length != 16)
                         throw new InvalidDataException("The secure key is invalid");
+
+                    // log
+#if DEBUG_SECURERPC
+                    Console.WriteLine($"[SecureRpcProxy] Handshake Got key Timeslot: {respondKeyMsg.KeyTimeSlot} Nonce: {BitConverter.ToString(respondKeyMsg.ServerNonce).Replace("-", "")}");
+#endif
 
                     // set server encryption key
                     _serverEncryptionKey = respondKeyMsg.ServerKey;
@@ -229,20 +275,38 @@ namespace Holon.Remoting.Security
             if (!envelope.Headers.ContainsKey(RpcSecureHeader.HEADER_NAME))
                 return envelope.Body;
 
-            using (MemoryStream outputStream = new MemoryStream()) {
-                // decrypt
-                using (MemoryStream inputStream = new MemoryStream(envelope.Body)) {
-                    using (Aes aes = Aes.Create()) {
-                        aes.Key = _serverEncryptionKey;
-                        aes.IV = _serverNonce;
+            // decode header
+            RpcSecureHeader header = new RpcSecureHeader(Encoding.UTF8.GetString(envelope.Headers[RpcSecureHeader.HEADER_NAME] as byte[]));
 
-                        using (CryptoStream decryptStream = new CryptoStream(inputStream, aes.CreateDecryptor(), CryptoStreamMode.Read)) {
-                            decryptStream.CopyTo(outputStream);
+            if (header.Type == RpcSecureMessageType.RespondMessage) {
+                using (MemoryStream outputStream = new MemoryStream()) {
+                    // decrypt
+                    using (MemoryStream inputStream = new MemoryStream(envelope.Body)) {
+                        using (Aes aes = Aes.Create()) {
+                            aes.Key = _serverEncryptionKey;
+                            aes.IV = _serverNonce;
+
+                            using (CryptoStream decryptStream = new CryptoStream(inputStream, aes.CreateDecryptor(), CryptoStreamMode.Read)) {
+                                decryptStream.CopyTo(outputStream);
+                            }
                         }
                     }
+
+                    return outputStream.ToArray();
+                }
+            } else if (header.Type == RpcSecureMessageType.Error) {
+                // deserialize
+                RpcSecureErrorMsg errorMsg = null;
+
+                try {
+                    errorMsg = envelope.AsProtoBuf<RpcSecureErrorMsg>();
+                } catch(Exception ex) {
+                    throw new InvalidDataException("The secure service sent an invalid error respsonse", ex);
                 }
 
-                return outputStream.ToArray();
+                throw new SecurityException($"{errorMsg.Message} ({errorMsg.Code})");
+            } else {
+                throw new InvalidDataException($"The secure service sent an invalid response ({header.Type})");
             }
         }
 
@@ -256,7 +320,12 @@ namespace Holon.Remoting.Security
         /// <returns></returns>
         protected override async Task<TT> InvokeOperationAsync<TT>(MethodInfo method, object[] args, Type returnType) {
             // perform handshake if we don't have our key yet or it has expired
-            if (_serverEncryptionKey == null || SecureUtils.HasTimeSlotExpired(_serverEncryptionKeyTimeSlot)) {
+            if (_serverEncryptionKey == null || SecureUtils.HasTimeSlotExpired(_serverEncryptionKeyTimeSlot, false)) {
+#if DEBUG_SECURERPC
+                Console.WriteLine($"[SecureRpcProxy] InvokeOperation KeyNull: {_serverEncryptionKey == null} Expired: {SecureUtils.HasTimeSlotExpired(_serverEncryptionKeyTimeSlot, false)}");
+#endif
+
+                // perform handshake (partial if required)
                 await HandshakeAsync();
             }
 
