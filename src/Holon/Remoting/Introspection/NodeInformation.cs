@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace Holon.Introspection
+namespace Holon.Remoting.Introspection
 {
     /// <summary>
     /// Represents information about a remote node.

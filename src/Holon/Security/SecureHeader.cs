@@ -2,20 +2,20 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Holon.Remoting.Security
+namespace Holon.Security
 {
     /// <summary>
-    /// Represents an RPC header.
+    /// Represents a secure service message header.
     /// </summary>
-    internal sealed class RpcSecureHeader
+    internal sealed class SecureHeader
     {
         #region Constants
-        internal const string HEADER_NAME = "X-Secure-RPC";
+        internal const string HEADER_NAME = "X-SecureService";
         internal const string HEADER_VERSION = "1.0";
         #endregion
 
         #region Fields
-        private RpcSecureMessageType _type;
+        private SecureMessageType _type;
         private string _version;
         #endregion
 
@@ -23,7 +23,7 @@ namespace Holon.Remoting.Security
         /// <summary>
         /// Gets the message type.
         /// </summary>
-        public RpcSecureMessageType Type {
+        public SecureMessageType Type {
             get {
                 return _type;
             }
@@ -60,20 +60,20 @@ namespace Holon.Remoting.Security
                 if (key.Equals("v", StringComparison.CurrentCultureIgnoreCase))
                     _version = val;
                 else if (key.Equals("t", StringComparison.CurrentCultureIgnoreCase)) {
-                    if (val.Equals(nameof(RpcSecureMessageType.RequestCertificate), StringComparison.CurrentCultureIgnoreCase))
-                        _type = RpcSecureMessageType.RequestCertificate;
-                    else if (val.Equals(nameof(RpcSecureMessageType.RespondCertificate), StringComparison.CurrentCultureIgnoreCase))
-                        _type = RpcSecureMessageType.RespondCertificate;
-                    else if (val.Equals(nameof(RpcSecureMessageType.RequestKey), StringComparison.CurrentCultureIgnoreCase))
-                        _type = RpcSecureMessageType.RequestKey;
-                    else if (val.Equals(nameof(RpcSecureMessageType.RespondKey), StringComparison.CurrentCultureIgnoreCase))
-                        _type = RpcSecureMessageType.RespondKey;
-                    else if (val.Equals(nameof(RpcSecureMessageType.Error), StringComparison.CurrentCultureIgnoreCase))
-                        _type = RpcSecureMessageType.Error;
-                    else if (val.Equals(nameof(RpcSecureMessageType.RequestMessage), StringComparison.CurrentCultureIgnoreCase))
-                        _type = RpcSecureMessageType.RequestMessage;
-                    else if (val.Equals(nameof(RpcSecureMessageType.RespondMessage), StringComparison.CurrentCultureIgnoreCase))
-                        _type = RpcSecureMessageType.RespondMessage;
+                    if (val.Equals(nameof(SecureMessageType.RequestCertificate), StringComparison.CurrentCultureIgnoreCase))
+                        _type = SecureMessageType.RequestCertificate;
+                    else if (val.Equals(nameof(SecureMessageType.RespondCertificate), StringComparison.CurrentCultureIgnoreCase))
+                        _type = SecureMessageType.RespondCertificate;
+                    else if (val.Equals(nameof(SecureMessageType.RequestKey), StringComparison.CurrentCultureIgnoreCase))
+                        _type = SecureMessageType.RequestKey;
+                    else if (val.Equals(nameof(SecureMessageType.RespondKey), StringComparison.CurrentCultureIgnoreCase))
+                        _type = SecureMessageType.RespondKey;
+                    else if (val.Equals(nameof(SecureMessageType.Error), StringComparison.CurrentCultureIgnoreCase))
+                        _type = SecureMessageType.Error;
+                    else if (val.Equals(nameof(SecureMessageType.RequestMessage), StringComparison.CurrentCultureIgnoreCase))
+                        _type = SecureMessageType.RequestMessage;
+                    else if (val.Equals(nameof(SecureMessageType.RespondMessage), StringComparison.CurrentCultureIgnoreCase))
+                        _type = SecureMessageType.RespondMessage;
                     else
                         throw new NotImplementedException("The secure RPC message type is unsupported");
                 }
@@ -97,7 +97,7 @@ namespace Holon.Remoting.Security
         /// Creates a new header parsed from the provided input.
         /// </summary>
         /// <param name="input">The input.</param>
-        public RpcSecureHeader(string input) {
+        public SecureHeader(string input) {
             InternalParse(input);
         }
 
@@ -106,7 +106,7 @@ namespace Holon.Remoting.Security
         /// </summary>
         /// <param name="version">The version.</param>
         /// <param name="type">The message type.</param>
-        public RpcSecureHeader(string version, RpcSecureMessageType type) {
+        public SecureHeader(string version, SecureMessageType type) {
             _type = type;
             _version = version;
         }

@@ -2,12 +2,12 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Holon.Remoting.Security
+namespace Holon.Security
 {
     /// <summary>
-    /// Represents the type of secure RPC message.
+    /// Represents the type of secure message.
     /// </summary>
-    public enum RpcSecureMessageType
+    public enum SecureMessageType
     {
         /// <summary>
         /// Requests the certificate from the secure service.

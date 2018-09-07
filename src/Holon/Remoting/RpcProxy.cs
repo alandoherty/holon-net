@@ -16,14 +16,9 @@ namespace Holon.Remoting
     {
         #region Fields
         /// <summary>
-        /// The node.
+        /// The underlying channel.
         /// </summary>
-        protected Node _node;
-
-        /// <summary>
-        /// The target service address.
-        /// </summary>
-        protected ServiceAddress _addr;
+        private IClientChannel _channel;
 
         /// <summary>
         /// The interface type info.
@@ -42,24 +37,13 @@ namespace Holon.Remoting
 
         #region Properties
         /// <summary>
-        /// Gets or sets the target node.
+        /// Gets or sets the communication channel.
         /// </summary>
-        public Node Node {
+        public IClientChannel Channel {
             get {
-                return _node;
+                return _channel;
             }set {
-                _node = value;
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets the target service address.
-        /// </summary>
-        public ServiceAddress Address {
-            get {
-                return _addr;
-            } set {
-                _addr = value;
+                _channel = value;
             }
         }
 
@@ -108,27 +92,6 @@ namespace Holon.Remoting
             // invoke
             return _invokeMethodInfo.MakeGenericMethod(genericType).Invoke(this, new object[] { targetMethod, args, targetMethod.ReturnType });
         }
-        
-        /// <summary>
-        /// Transforms the request body.
-        /// </summary>
-        /// <param name="body">The body.</param>
-        /// <param name="headers">The headers.</param>
-        /// <remarks>Implement custom pre-processing here.</remarks>
-        /// <returns>The body.</returns>
-        protected virtual byte[] TransformRequest(byte[] body, IDictionary<string, object> headers) {
-            return body;
-        }
-
-        /// <summary>
-        /// Transforms the response body.
-        /// </summary>
-        /// <param name="envelope">The envelope.</param>
-        /// <remarks>Implement custom pre-processing here.</remarks>
-        /// <returns>The body.</returns>
-        protected virtual byte[] TransformResponse(Envelope envelope) {
-            return envelope.Body;
-        }
 
         /// <summary>
         /// Invokes an operation method.
@@ -161,21 +124,15 @@ namespace Holon.Remoting
 
             // ask or send
             if (method.GetCustomAttribute<RpcOperationAttribute>().NoReply) {
-                // transform request
-                requestBody = TransformRequest(requestBody, headers);
-
                 // send operation
-                await _node.SendAsync(_addr, requestBody, headers);
+                await _channel.SendAsync(requestBody, headers);
 
                 return default(TT);
             } else {
-                // transform request
-                requestBody = TransformRequest(requestBody, headers);
-
-                Envelope res = await _node.AskAsync(_addr, requestBody, headers, _configuration.Timeout);
+                Envelope res = await _channel.AskAsync(requestBody, _configuration.Timeout, headers);
 
                 // transform response
-                byte[] responseBody = TransformResponse(res);
+                byte[] responseBody = res.Body;
 
                 // try and get response header
                 if (!res.Headers.TryGetValue(RpcHeader.HEADER_NAME, out object resHeaderData))

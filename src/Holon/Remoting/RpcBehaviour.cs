@@ -4,7 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
-using Holon.Introspection;
+using Holon.Remoting.Introspection;
 using Holon.Remoting.Serializers;
 using Holon.Services;
 
@@ -51,17 +51,6 @@ namespace Holon.Remoting
             } else {
                 throw new NotSupportedException("The RPC version is not supported");
             }
-        }
-
-        /// <summary>
-        /// Replies to the provided envelope with the body and headers.
-        /// </summary>
-        /// <param name="envelope">The envelope.</param>
-        /// <param name="body">The body.</param>
-        /// <param name="headers">The headers.</param>
-        /// <returns></returns>
-        protected virtual Task ReplyAsync(Envelope envelope, byte[] body, IDictionary<string, object> headers) {
-            return envelope.Node.ReplyAsync(envelope.ReplyTo, envelope.ID, headers, body);
         }
 
         /// <summary>
@@ -127,12 +116,12 @@ namespace Holon.Remoting
                     byte[] resBody = serializer.SerializeResponse(res);
 
                     // send reply
-                    Dictionary<string, object> headers = new Dictionary<string, object>() {
+                    Dictionary<string, object> headers = new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase) {
                         { RpcHeader.HEADER_NAME, new RpcHeader(RpcHeader.HEADER_VERSION, serializer.Name, RpcMessageType.Single).ToString() }
                     };
 
                     // reply
-                    await ReplyAsync(envelope, resBody, headers).ConfigureAwait(false);
+                    await envelope.ReplyAsync(resBody, headers).ConfigureAwait(false);
                 }
 
                 // throw exceptions

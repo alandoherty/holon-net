@@ -3,10 +3,10 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace Holon.Remoting.Security
+namespace Holon.Security
 {
     [ProtoContract]
-    class RpcSecureRespondCertificateMsg
+    class SecureRespondCertificateMsg
     {
         /// <summary>
         /// The secure service certificate, signed by an authority CA.
@@ -16,7 +16,7 @@ namespace Holon.Remoting.Security
     }
 
     [ProtoContract]
-    class RpcSecureRequestKeyMsg
+    class SecureRequestKeyMsg
     {
         /// <summary>
         /// The handshake key used in the response.
@@ -32,7 +32,7 @@ namespace Holon.Remoting.Security
     }
 
     [ProtoContract]
-    class RpcSecureRespondKeyMsg
+    class SecureRespondKeyMsg
     {
         /// <summary>
         /// The data key for a specific time slot with the nonce.
@@ -54,7 +54,7 @@ namespace Holon.Remoting.Security
     }
 
     [ProtoContract]
-    class RpcSecureErrorMsg
+    class SecureErrorMsg
     {
         [ProtoMember(1)]
         public string Code { get; set; }
@@ -64,7 +64,7 @@ namespace Holon.Remoting.Security
     }
 
     [ProtoContract]
-    class RpcSecureMessageMsg
+    class SecureMessageMsg
     {
         /// <summary>
         /// The time slot of the key, this will be validated for expiry.

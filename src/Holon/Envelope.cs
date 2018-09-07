@@ -6,6 +6,8 @@ using System.Text;
 using System.Xml.Serialization;
 using Holon.Services;
 using ProtoBuf;
+using Holon.Protocol;
+using System.Threading.Tasks;
 
 namespace Holon
 {
@@ -18,6 +20,7 @@ namespace Holon
         private Node _node;
         private BrokerMessage _msg;
         private byte[] _body;
+        private IReplyChannel _channel;
         #endregion
 
         #region Properties
@@ -51,7 +54,7 @@ namespace Holon
         /// <summary>
         /// Gets the service address the envelope was received on.
         /// </summary>
-        public ServiceAddress Service {
+        public ServiceAddress ServiceAddress {
             get {
                 return new ServiceAddress(string.Format("{0}:{1}", _msg.Exchange, _msg.RoutingKey));
             }
@@ -98,12 +101,49 @@ namespace Holon
         /// </summary>
         public byte[] Body {
             get {
+                // check if we should use the raw body
+                if (_body == null)
+                    return _msg.Body;
+
+                // we have an altered body
                 return _body;
+            } set {
+                _body = value;
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the reply channel.
+        /// </summary>
+        public IReplyChannel Channel {
+            get {
+                return _channel;
+            } set {
+                _channel = value;
             }
         }
         #endregion
 
         #region Methods
+        /// <summary>
+        /// Replies to this envelope.
+        /// </summary>
+        /// <param name="body">The body.</param>
+        /// <param name="headers">The headers.</param>
+        /// <returns></returns>
+        internal Task ReplyAsync(byte[] body, IDictionary<string, object> headers = null) {
+            // validate arguments
+            if (body == null)
+                throw new ArgumentNullException(nameof(body), "The body cannot be null");
+            else if (ID == Guid.Empty || ReplyTo == null)
+                throw new InvalidOperationException("The envelope does not have sufficient reply information");
+
+            if (_channel != null)
+                return _channel.ReplyAsync(body, headers ?? new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase));
+            else
+                return _node.ReplyAsync(ReplyTo, ID, body, headers ?? new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase));
+        }
+
         /// <summary>
         /// Deserializes the body as a protobuf contract.
         /// </summary>
@@ -150,17 +190,6 @@ namespace Holon
         public string AsString(Encoding encoding) {
             return encoding.GetString(Body);
         }
-
-        /// <summary>
-        /// Creates a copy of this envelope with a new body.
-        /// </summary>
-        /// <param name="body">The body.</param>
-        /// <returns></returns>
-        public Envelope Transform(byte[] body) {
-            return new Envelope(_msg, _node) {
-                _body = body
-            };
-        }
         #endregion
 
         #region Constructors
@@ -172,7 +201,6 @@ namespace Holon
         internal Envelope(BrokerMessage msg, Node node) {
             _msg = msg;
             _node = node;
-            _body = msg.Body;
         }
         #endregion
     }

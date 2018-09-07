@@ -8,7 +8,7 @@ using System.Threading.Tasks.Dataflow;
 using System.Threading;
 using Holon.Services;
 
-namespace Holon
+namespace Holon.Protocol
 {
     /// <summary>
     /// Represents a basic consumer designed for use with asyncronous TPL code.

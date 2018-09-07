@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Holon.Protocol;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -237,7 +238,7 @@ namespace Holon.Services
                 Interlocked.Increment(ref _requestsPending);
                 
                 // handle
-                await _behaviour.HandleAsync(envelope).ConfigureAwait(false);
+                await ServiceHandleAsync(envelope).ConfigureAwait(false);
 
                 // release semaphore
                 try {
@@ -271,8 +272,17 @@ namespace Holon.Services
         /// Handles a single envelope asyncronously.
         /// </summary>
         /// <param name="envelope">The envelope.</param>
-        private Task ServiceHandleAsync(Envelope envelope) {
-            return _behaviour.HandleAsync(envelope);
+        private async Task ServiceHandleAsync(Envelope envelope) {
+            // process filters, if any handler in the chain returns false we ditch this envelope
+            if (_configuration.Filters.Length > 0) {
+                foreach (IServiceFilter filter in _configuration.Filters) {
+                    if (!await filter.HandleAsync(envelope).ConfigureAwait(false))
+                        return;
+                }
+            }
+
+            // actually run handler
+            await _behaviour.HandleAsync(envelope).ConfigureAwait(false);
         }
 
         /// <summary>

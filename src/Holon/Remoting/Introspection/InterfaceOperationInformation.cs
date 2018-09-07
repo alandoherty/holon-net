@@ -4,7 +4,7 @@ using System.Text;
 using Holon.Remoting;
 using ProtoBuf;
 
-namespace Holon.Introspection
+namespace Holon.Remoting.Introspection
 {
     /// <summary>
     /// Represents an interface method fopr introspection.

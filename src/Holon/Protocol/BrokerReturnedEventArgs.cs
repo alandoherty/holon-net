@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace Holon
+namespace Holon.Protocol
 {
     /// <summary>
     /// Provides data for the Broker.Returned event.

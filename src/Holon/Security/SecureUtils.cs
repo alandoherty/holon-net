@@ -1,17 +1,43 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Security.Cryptography;
 using System.Text;
 
-namespace Holon.Remoting.Security
+namespace Holon.Security
 {
     /// <summary>
-    /// Provides utilities for secure RPC.
+    /// Provides utilities for secure channel.
     /// </summary>
     static class SecureUtils
     {
         private const int TimeslotDuration = 1800; // 30 minutes
         private const int TimeslotVariation = 180; // 3 minutes
-        
+
+        /// <summary>
+        /// Generate the AES128 key for the provided nonce and time slot.
+        /// </summary>
+        /// <param name="nonceBytes">The nonce bytes.</param>
+        /// <param name="timeSlot">The time slot.</param>
+        /// <param name="secret">The secret.</param>
+        /// <returns>The key bytes.</returns>
+        public static byte[] GenerateKey(byte[] nonceBytes, long timeSlot, byte[] secret) {
+            // build input bytes
+            byte[] inputBytes = new byte[nonceBytes.Length + 8];
+
+            Buffer.BlockCopy(nonceBytes, 0, inputBytes, 0, nonceBytes.Length);
+            Buffer.BlockCopy(BitConverter.GetBytes(timeSlot), 0, inputBytes, nonceBytes.Length, 8);
+
+            // get time slot
+            byte[] keyBytes = new byte[16];
+
+            using (HMACSHA256 hmac = new HMACSHA256(secret)) {
+                byte[] hashBytes = hmac.ComputeHash(inputBytes);
+                Buffer.BlockCopy(hashBytes, 0, keyBytes, 0, 16);
+            }
+
+            return keyBytes;
+        }
+
         /// <summary>
         /// Gets the next time slot for next key.
         /// If the slot expires within 3 minutes it will return the next slot to maximise key time.

@@ -10,9 +10,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using Holon.Events;
 using Holon.Events.Serializers;
-using Holon.Introspection;
 using Holon.Metrics;
+using Holon.Protocol;
 using Holon.Remoting;
+using Holon.Remoting.Introspection;
 using Holon.Services;
 using Newtonsoft.Json;
 using ProtoBuf;
@@ -132,27 +133,16 @@ namespace Holon
         }
         #endregion
 
-        #region Methods
-        /// <summary>
-        /// Replys to the message.
-        /// </summary>
-        /// <param name="replyTo">The reply to address.</param>
-        /// <param name="envelopeId">The envelope ID.</param>
-        /// <param name="body">The body.</param>
-        /// <returns></returns>
-        internal Task ReplyAsync(string replyTo, Guid envelopeId, byte[] body) {
-            return ReplyAsync(replyTo, envelopeId, null, body);
-        }
-
+        #region Service Messaging
         /// <summary>
         /// Replys to a message.
         /// </summary>
         /// <param name="replyTo">The reply to address.</param>
-        /// <param name="envelopeId">The envelope ID.</param>
-        /// <param name="headers">The headers.</param>
+        /// <param name="replyId">The envelope ID.</param>
         /// <param name="body">The body.</param>
+        /// <param name="headers">The headers.</param>
         /// <returns></returns>
-        internal async Task ReplyAsync(string replyTo, Guid envelopeId, IDictionary<string, object> headers, byte[] body) {
+        internal async Task ReplyAsync(string replyTo, Guid replyId, byte[] body, IDictionary<string, object> headers = null) {
             // wait for broker to become available
             TaskCompletionSource<Broker> wait = null;
             Broker broker = _broker;
@@ -166,17 +156,7 @@ namespace Holon
                 broker = await wait.Task.ConfigureAwait(false);
 
             // send
-            await broker.SendAsync("", replyTo, null, envelopeId.ToString(), headers, body).ConfigureAwait(false);
-        }
-
-        /// <summary>
-        /// Sends the envelope message to the provided service address.
-        /// </summary>
-        /// <param name="addr">The service address.</param>
-        /// <param name="body">The body.</param>
-        /// <returns></returns>
-        public Task SendAsync(ServiceAddress addr, byte[] body) {
-            return SendAsync(addr, body, null);
+            await broker.SendAsync("", replyTo, null, replyId.ToString(), headers ?? new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase), body).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -186,7 +166,18 @@ namespace Holon
         /// <param name="body">The body.</param>
         /// <param name="headers">The headers.</param>
         /// <returns></returns>
-        public async Task SendAsync(ServiceAddress addr, byte[] body, IDictionary<string, object> headers) {
+        public Task SendAsync(string addr, byte[] body, IDictionary<string, object> headers = null) {
+            return SendAsync(new ServiceAddress(addr), body, headers);
+        }
+
+        /// <summary>
+        /// Sends the envelope message to the provided service address.
+        /// </summary>
+        /// <param name="addr">The service address.</param>
+        /// <param name="body">The body.</param>
+        /// <param name="headers">The headers.</param>
+        /// <returns></returns>
+        public async Task SendAsync(ServiceAddress addr, byte[] body, IDictionary<string, object> headers = null) {
             // wait for broker to become available
             TaskCompletionSource<Broker> wait = null;
             Broker broker = _broker;
@@ -200,30 +191,7 @@ namespace Holon
                 broker = await wait.Task.ConfigureAwait(false);
 
             // send
-            await broker.SendAsync(addr.Namespace, addr.RoutingKey, null, null, headers, body).ConfigureAwait(false);
-        }
-
-        /// <summary>
-        /// Sends the envelope message to the provided service address and waits for a response.
-        /// </summary>
-        /// <param name="addr">The service address.</param>
-        /// <param name="body">The body.</param>
-        /// <param name="timeout">The timeout.</param>
-        /// <returns></returns>
-        public Task<Envelope> AskAsync(ServiceAddress addr, byte[] body, TimeSpan timeout) {
-            return AskAsync(addr, body, null, timeout, CancellationToken.None);
-        }
-
-        /// <summary>
-        /// Sends the envelope message to the provided service address and waits for a response.
-        /// </summary>
-        /// <param name="addr">The service address.</param>
-        /// <param name="body">The body.</param>
-        /// <param name="headers">The headers.</param>
-        /// <param name="timeout">The timeout.</param>
-        /// <returns></returns>
-        public Task<Envelope> AskAsync(ServiceAddress addr, byte[] body, IDictionary<string, object> headers, TimeSpan timeout) {
-            return AskAsync(addr, body, headers, timeout, CancellationToken.None);
+            await broker.SendAsync(addr.Namespace, addr.RoutingKey, null, null, headers ?? new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase), body).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -231,11 +199,11 @@ namespace Holon
         /// </summary>
         /// <param name="addr">The service adddress.</param>
         /// <param name="body">The body.</param>
-        /// <param name="headers">The headers.</param>
         /// <param name="timeout">The timeout.</param>
+        /// <param name="headers">The headers.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns></returns>
-        public async Task<Envelope> AskAsync(ServiceAddress addr, byte[] body, IDictionary<string, object> headers, TimeSpan timeout, CancellationToken cancellationToken) {
+        public async Task<Envelope> AskAsync(ServiceAddress addr, byte[] body, TimeSpan timeout, IDictionary<string, object> headers = null, CancellationToken cancellationToken = default(CancellationToken)) {
             // wait for broker to become available
             TaskCompletionSource<Broker> wait = null;
             Broker broker = _broker;
@@ -264,6 +232,19 @@ namespace Holon
 
             // the actual receiver handler is setup since it's syncronous, but now we wait
             return await envelopeWait.ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Sends the envelope message to the provided service address and waits for a response.
+        /// </summary>
+        /// <param name="addr">The service adddress.</param>
+        /// <param name="body">The body.</param>
+        /// <param name="timeout">The timeout.</param>
+        /// <param name="headers">The headers.</param>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns></returns>
+        public Task<Envelope> AskAsync(string addr, byte[] body, TimeSpan timeout, IDictionary<string, object> headers = null, CancellationToken cancellationToken = default(CancellationToken)) {
+            return AskAsync(new ServiceAddress(addr), body, timeout, headers, cancellationToken);
         }
 
         /// <summary>
@@ -301,7 +282,9 @@ namespace Holon
                 }
             }
         }
+        #endregion
 
+        #region Other Methods
         /// <summary>
         /// Reconnects the underlying broker.
         /// </summary>
@@ -629,6 +612,96 @@ namespace Holon
         }
         #endregion
 
+        #region Channels
+        /// <summary>
+        /// Configures the provided channel for this node.
+        /// </summary>
+        /// <param name="address">The address.</param>
+        /// <param name="channel">The channel.</param>
+        /// <returns>The configured channel.</returns>
+        public IClientChannel Channel(ServiceAddress address, IClientChannel channel) {
+            channel.Reset(this, address);
+            return channel;
+        }
+        #endregion
+
+        #region Proxying
+        /// <summary>
+        /// Gets the introspection proxy interface for RPC.
+        /// </summary>
+        /// <param name="address">The address.</param>
+        /// <returns></returns>
+        public IInterfaceQuery001 QueryProxy(string address) {
+            return QueryProxy(new ServiceAddress(address));
+        }
+
+        /// <summary>
+        /// Gets the introspection proxy interface for RPC.
+        /// </summary>
+        /// <param name="address">The address.</param>
+        /// <returns></returns>
+        public IInterfaceQuery001 QueryProxy(ServiceAddress address) {
+            return Proxy<IInterfaceQuery001>(address);
+        }
+
+        /// <summary>
+        /// Gets an RPC proxy for the provided interface.
+        /// </summary>
+        /// <typeparam name="T">The interface type.</typeparam>
+        /// <param name="address">The service address.</param>
+        /// <returns></returns>
+        public T Proxy<T>(string address) {
+            return Proxy<T>(new ServiceAddress(address));
+        }
+
+        /// <summary>
+        /// Gets an RPC proxy for the provided interface.
+        /// </summary>
+        /// <typeparam name="IT">The interface type.</typeparam>
+        /// <param name="address">The service address.</param>
+        /// <param name="configuration">The configuration.</param>
+        /// <returns></returns>
+        public IT Proxy<IT>(ServiceAddress address, ProxyConfiguration configuration) {
+            // create the channel
+            BasicChannel channel = new BasicChannel();
+            channel.Reset(this, address);
+
+            // create proxy
+            return channel.Proxy<IT>(configuration);
+        }
+
+        /// <summary>
+        /// Gets an RPC proxy for the provided interface.
+        /// </summary>
+        /// <typeparam name="IT">The interface type.</typeparam>
+        /// <param name="address">The service address.</param>
+        /// <param name="configuration">The configuration.</param>
+        /// <returns></returns>
+        public IT Proxy<IT>(string address, ProxyConfiguration configuration) {
+            return Proxy<IT>(address, configuration);
+        }
+
+        /// <summary>
+        /// Gets an RPC proxy for the provided interface.
+        /// </summary>
+        /// <typeparam name="IT">The interface type.</typeparam>
+        /// <param name="address">The service address.</param>
+        /// <returns></returns>
+        public IT Proxy<IT>(ServiceAddress address) {
+            return Proxy<IT>(address, new ProxyConfiguration() { });
+        }
+
+        /// <summary>
+        /// Gets a RPC proxy for the provided service address using dynamics.
+        /// </summary>
+        /// <param name="address">The service address.</param>
+        /// <param name="interface">The interface.</param>
+        /// <returns></returns>
+        public dynamic DynamicProxy(ServiceAddress address, string @interface) {
+            throw new NotImplementedException();
+        }
+        #endregion
+
         #region Event System
         /// <summary>
         /// Declares the event, creating the namespace and storing the type for future reference.
@@ -743,9 +816,6 @@ namespace Holon
         public Task<EventSubscription> SubscribeAsync(string addr) {
             return SubscribeAsync(new EventAddress(addr));
         }
-        #endregion
-
-        #region Metrics
         #endregion
 
         #region Setup

@@ -15,7 +15,7 @@
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <DocumentationFile>bin\Debug\netstandard2.0\Holon.xml</DocumentationFile>
-    <DefineConstants>TRACE;DEBUG;NETSTANDARD;NETSTANDARD1_6</DefineConstants>
+    <DefineConstants>TRACE;DEBUG;DEBUG_SECURE</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">

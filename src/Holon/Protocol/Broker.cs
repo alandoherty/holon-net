@@ -7,7 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
 
-namespace Holon
+namespace Holon.Protocol
 {
     /// <summary>
     /// Represents a broker attached to the messaging system.

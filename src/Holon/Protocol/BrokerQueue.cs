@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Holon
+namespace Holon.Protocol
 {
     /// <summary>
     /// Represents a self-consumed queue.

@@ -4,7 +4,7 @@ using System.Text;
 using Holon.Services;
 using ProtoBuf;
 
-namespace Holon.Introspection
+namespace Holon.Remoting.Introspection
 {
     /// <summary>
     /// Represents information for a service.

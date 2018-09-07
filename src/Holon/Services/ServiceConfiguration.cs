@@ -23,5 +23,10 @@ namespace Holon.Services
         /// Gets or sets the maximum number of concurrent operations.
         /// </summary>
         public int MaxConcurrency { get; set; } = 16;
+
+        /// <summary>
+        /// Gets or sets the ordered filters.
+        /// </summary>
+        public IServiceFilter[] Filters { get; set; } = new IServiceFilter[0];
     }
 }

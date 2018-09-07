@@ -4,7 +4,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Holon.Remoting;
 
-namespace Holon.Introspection
+namespace Holon.Remoting.Introspection
 {
     /// <summary>
     /// Provides functionality to query node information.

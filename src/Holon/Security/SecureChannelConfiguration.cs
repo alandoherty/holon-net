@@ -1,15 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 
-namespace Holon.Remoting
+namespace Holon.Security
 {
     /// <summary>
-    /// Represents configuration for a secure proxy.
+    /// Represents configuration for a secure channel.
     /// </summary>
-    public class SecureProxyConfiguration : ProxyConfiguration
+    public class SecureChannelConfiguration
     {
         /// <summary>
         /// Gets the root authority to validate the certificate during negociation.
@@ -27,5 +26,10 @@ namespace Holon.Remoting
         /// This should ALWAYS be true in production.
         /// </summary>
         public bool ValidateAddress { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets the duration to wait for a handshake.
+        /// </summary>
+        public TimeSpan HandshakeTimeout { get; set; } = TimeSpan.FromSeconds(15);
     }
 }

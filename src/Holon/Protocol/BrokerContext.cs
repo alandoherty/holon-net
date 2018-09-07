@@ -7,7 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
-namespace Holon
+namespace Holon.Protocol
 {
     /// <summary>
     /// Represents a broker connection.
