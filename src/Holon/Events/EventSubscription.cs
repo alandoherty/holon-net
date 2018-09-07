@@ -40,7 +40,7 @@ namespace Holon.Events
         /// </summary>
         /// <param name="message">The message.</param>
         /// <returns>The event.</returns>
-        private Event ProcessMessage(BrokerMessage message) {
+        private Event ProcessMessage(InboundMessage message) {
             // read envelope
             Envelope envelope = new Envelope(message, _node);
             
@@ -73,7 +73,7 @@ namespace Holon.Events
         /// <returns>The event.</returns>
         public async Task<Event> ReceiveAsync() {
             while (true) {
-                BrokerMessage message = await _queue.ReceiveAsync();
+                InboundMessage message = await _queue.ReceiveAsync();
 
                 try {
                     return ProcessMessage(message);
@@ -88,7 +88,7 @@ namespace Holon.Events
         /// <returns>The event.</returns>
         public async Task<Event> ReceiveAsync(CancellationToken cancellationToken) {
             while (true) {
-                BrokerMessage message = await _queue.ReceiveAsync(cancellationToken);
+                InboundMessage message = await _queue.ReceiveAsync(cancellationToken);
 
                 try {
                     return ProcessMessage(message);
@@ -103,7 +103,7 @@ namespace Holon.Events
         /// <returns>The event.</returns>
         public async Task<Event> ReceiveAsync(TimeSpan timeout) {
             while (true) {
-                BrokerMessage message = await _queue.ReceiveAsync(timeout);
+                InboundMessage message = await _queue.ReceiveAsync(timeout);
 
                 try {
                     return ProcessMessage(message);

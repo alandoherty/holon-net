@@ -18,7 +18,7 @@ namespace Holon
     {
         #region Fields
         private Node _node;
-        private BrokerMessage _msg;
+        private InboundMessage _msg;
         private byte[] _body;
         private IReplyChannel _channel;
         #endregion
@@ -27,7 +27,7 @@ namespace Holon
         /// <summary>
         /// Gets the contents of the envelope.
         /// </summary>
-        internal BrokerMessage Message {
+        internal InboundMessage Message {
             get {
                 return _msg;
             }
@@ -131,7 +131,7 @@ namespace Holon
         /// <param name="body">The body.</param>
         /// <param name="headers">The headers.</param>
         /// <returns></returns>
-        internal Task ReplyAsync(byte[] body, IDictionary<string, object> headers = null) {
+        public Task ReplyAsync(byte[] body, IDictionary<string, object> headers = null) {
             // validate arguments
             if (body == null)
                 throw new ArgumentNullException(nameof(body), "The body cannot be null");
@@ -198,7 +198,7 @@ namespace Holon
         /// </summary>
         /// <param name="msg">The message.</param>
         /// <param name="node">The receiving node.</param>
-        internal Envelope(BrokerMessage msg, Node node) {
+        internal Envelope(InboundMessage msg, Node node) {
             _msg = msg;
             _node = node;
         }

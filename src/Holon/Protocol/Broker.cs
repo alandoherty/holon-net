@@ -58,37 +58,60 @@ namespace Holon.Protocol
         /// <summary>
         /// Sends the message to the provided exchange and routing key.
         /// </summary>
-        /// <param name="exchange">The exchange.</param>
-        /// <param name="routingKey">The routing key.</param>
-        /// <param name="body">The body.</param>
+        /// <param name="messages">The messages.</param>
         /// <returns></returns>
-        public Task SendAsync(string exchange, string routingKey, byte[] body) {
-            return SendAsync(exchange, routingKey, null, null, null, body);
+        public Task SendAsync(params OutboundMessage[] messages) {
+            return SendAsync((IEnumerable<OutboundMessage>)messages);
+        }
+
+        /// <summary>
+        /// Sends many messages to the broker.
+        /// </summary>
+        /// <param name="messages">The messages.</param>
+        /// <returns></returns>
+        public Task SendAsync(IEnumerable<OutboundMessage> messages) {
+            // create batch
+            IBasicPublishBatch batch = _channel.CreateBasicPublishBatch();
+
+            // add all the messages
+            foreach(OutboundMessage message in messages) {
+                IBasicProperties properties = _channel.CreateBasicProperties();
+
+                if (message.ReplyTo != null)
+                    properties.ReplyTo = message.ReplyTo;
+                if (message.Headers != null)
+                    properties.Headers = message.Headers;
+                if (message.ReplyID != null)
+                    properties.CorrelationId = message.ReplyID.ToString();
+
+                batch.Add(message.Exchange, message.RoutingKey, message.Mandatory, properties, message.Body);
+            }
+
+            return _ctx.AskWork(delegate () {
+                batch.Publish();
+                return null;
+            });
         }
 
         /// <summary>
         /// Sends the message to the provided exchange and routing key.
         /// </summary>
-        /// <param name="exchange">The exchange.</param>
-        /// <param name="routingKey">The routing key.</param>
-        /// <param name="body">The body string.</param>
+        /// <param name="message">The message.</param>
         /// <returns></returns>
-        public Task SendAsync(string exchange, string routingKey, string body) {
-            return SendAsync(exchange, routingKey, null, null, null, body);
-        }
+        public Task SendAsync(OutboundMessage message) {
+            IBasicProperties properties = _channel.CreateBasicProperties();
 
-        /// <summary>
-        /// Sends the message to the provided exchange and routing key.
-        /// </summary>
-        /// <param name="exchange">The exchange.</param>
-        /// <param name="routingKey">The routing key.</param>
-        /// <param name="replyTo">The reply queue, can be null.</param>
-        /// <param name="correlationId">The correlation id, can be null.</param>
-        /// <param name="headers">The headers, can be null.</param>
-        /// <param name="body">The body.</param>
-        /// <returns></returns>
-        public Task SendAsync(string exchange, string routingKey, string replyTo, string correlationId, IDictionary<string, object> headers, byte[] body) {
-            return SendAsync(exchange, routingKey, replyTo, correlationId, headers, body, true);
+            if (message.ReplyTo != null)
+                properties.ReplyTo = message.ReplyTo;
+            if (message.Headers != null)
+                properties.Headers = message.Headers;
+            if (message.ReplyID != null)
+                properties.CorrelationId = message.ReplyID.ToString();
+
+            return _ctx.AskWork(delegate () {
+                _channel.BasicPublish(message.Exchange, message.RoutingKey, message.Mandatory, properties, message.Body);
+                return null;
+            });
         }
 
         /// <summary>
@@ -102,34 +125,8 @@ namespace Holon.Protocol
         /// <param name="body">The body.</param>
         /// <param name="mandatory">If the message is mandatory.</param>
         /// <returns></returns>
-        public Task SendAsync(string exchange, string routingKey, string replyTo, string correlationId, IDictionary<string, object> headers, byte[] body, bool mandatory) {
-            IBasicProperties properties = _channel.CreateBasicProperties();
-
-            if (replyTo != null)
-                properties.ReplyTo = replyTo;
-            if (headers != null)
-                properties.Headers = headers;
-            if (correlationId != null)
-                properties.CorrelationId = correlationId;
-
-            return _ctx.AskWork(delegate () {
-                _channel.BasicPublish(exchange, routingKey, mandatory, properties, body);
-                return null;
-            });
-        }
-
-        /// <summary>
-        /// Sends the message as a UTF-8 encoded string to the provided exchange and routing key.
-        /// </summary>
-        /// <param name="exchange">The exchange.</param>
-        /// <param name="routingKey">The routing key.</param>
-        /// <param name="replyTo">The reply queue, can be null.</param>
-        /// <param name="correlationId">The correlation id, can be null.</param>
-        /// <param name="headers">The headers, can be null.</param>
-        /// <param name="body">The body string.</param>
-        /// <returns></returns>
-        public Task SendAsync(string exchange, string routingKey, string replyTo, string correlationId, IDictionary<string, object> headers, string body) {
-            return SendAsync(exchange, routingKey, replyTo, correlationId, headers, Encoding.UTF8.GetBytes(body));
+        public Task SendAsync(string exchange, string routingKey, byte[] body, IDictionary<string, object> headers = null, string replyTo = null, string correlationId = null, bool mandatory = true) {
+            return SendAsync(new OutboundMessage(exchange, routingKey, body, headers, replyTo, correlationId, mandatory));
         }
 
         /// <summary>

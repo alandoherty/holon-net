@@ -297,7 +297,7 @@ namespace Holon.Services
 
             while (true) {
                 Envelope envelope = null;
-                BrokerMessage message = null;
+                InboundMessage message = null;
 
                 try {
                     // wait for a free request slot, this ensures ServiceConfiguration.MaxConcurrency is kept to

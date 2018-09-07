@@ -8,7 +8,7 @@ namespace Holon.Protocol
     /// <summary>
     /// Represents a message received on a broker.
     /// </summary>
-    public sealed class BrokerMessage
+    internal sealed class InboundMessage
     {
         #region Fields
         private IModel _channel;
@@ -86,7 +86,7 @@ namespace Holon.Protocol
         #endregion
 
         #region Constructors
-        internal BrokerMessage(IModel channel, ulong deliveryTag, bool redelivered, string exchange, string routingKey, IBasicProperties properties, byte[] body) {
+        internal InboundMessage(IModel channel, ulong deliveryTag, bool redelivered, string exchange, string routingKey, IBasicProperties properties, byte[] body) {
             _channel = channel;
             _deliveryTag = deliveryTag;
             _redelivered = redelivered;

@@ -298,10 +298,21 @@ namespace Holon.Security
             }
         }
 
+        /// <summary>
+        /// Creates a secure proxy for the provided interface.
+        /// </summary>
+        /// <typeparam name="IT">The interface type.</typeparam>
+        /// <returns>The proxy.</returns>
         public IT Proxy<IT>() {
             return Proxy<IT>(new ProxyConfiguration() { });
         }
 
+        /// <summary>
+        /// Creates a secuure proxy for the provided interface.
+        /// </summary>
+        /// <typeparam name="IT">The interface type.</typeparam>
+        /// <param name="configuration">The configuration.</param>
+        /// <returns>The proxy.</returns>
         public IT Proxy<IT>(ProxyConfiguration configuration) {
             // check type is interface
             TypeInfo typeInfo = typeof(IT).GetTypeInfo();

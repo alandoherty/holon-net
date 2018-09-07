@@ -13,12 +13,12 @@ namespace Holon.Protocol
     /// <summary>
     /// Represents a basic consumer designed for use with asyncronous TPL code.
     /// </summary>
-    public class AsyncConsumer : IBasicConsumer
+    internal class AsyncConsumer : IBasicConsumer
     {
         #region Fields
         private IModel _channel;
         private int _cancelled;
-        private BufferBlock<BrokerMessage> _mailbox = new BufferBlock<BrokerMessage>();
+        private BufferBlock<InboundMessage> _mailbox = new BufferBlock<InboundMessage>();
         #endregion
 
         /// <summary>
@@ -41,7 +41,7 @@ namespace Holon.Protocol
                 return;
 
             // empty mailbox and complete
-            _mailbox.TryReceiveAll(out IList<BrokerMessage> messages);
+            _mailbox.TryReceiveAll(out IList<InboundMessage> messages);
             _mailbox.Complete();
 
             // call event
@@ -84,7 +84,7 @@ namespace Holon.Protocol
         /// <param name="properties">The properties.</param>
         /// <param name="body">The body.</param>
         public void HandleBasicDeliver(string consumerTag, ulong deliveryTag, bool redelivered, string exchange, string routingKey, IBasicProperties properties, byte[] body) {
-            _mailbox.Post(new BrokerMessage(_channel, deliveryTag, redelivered, exchange, routingKey, properties, body));
+            _mailbox.Post(new InboundMessage(_channel, deliveryTag, redelivered, exchange, routingKey, properties, body));
         }
 
         /// <summary>
@@ -99,7 +99,7 @@ namespace Holon.Protocol
         /// Receives a message asyncronously from the consumer.
         /// </summary>
         /// <returns>The broker message.</returns>
-        public Task<BrokerMessage> ReceiveAsync() {
+        public Task<InboundMessage> ReceiveAsync() {
             return _mailbox.ReceiveAsync();
         }
 
@@ -108,7 +108,7 @@ namespace Holon.Protocol
         /// </summary>
         /// <param name="timeout">The timeout.</param>
         /// <returns>The broker message.</returns>
-        public Task<BrokerMessage> ReceiveAsync(TimeSpan timeout) {
+        public Task<InboundMessage> ReceiveAsync(TimeSpan timeout) {
             return _mailbox.ReceiveAsync(timeout);
         }
 
@@ -117,7 +117,7 @@ namespace Holon.Protocol
         /// </summary>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns>The broker message.</returns>
-        public Task<BrokerMessage> ReceiveAsync(CancellationToken cancellationToken) {
+        public Task<InboundMessage> ReceiveAsync(CancellationToken cancellationToken) {
             return _mailbox.ReceiveAsync(cancellationToken);
         }
 
@@ -127,7 +127,7 @@ namespace Holon.Protocol
         /// <param name="timeout">The timeout.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns>The broker message.</returns>
-        public Task<BrokerMessage> ReceiveAsync(TimeSpan timeout, CancellationToken cancellationToken) {
+        public Task<InboundMessage> ReceiveAsync(TimeSpan timeout, CancellationToken cancellationToken) {
             return _mailbox.ReceiveAsync(timeout, cancellationToken);
         }
 
@@ -135,7 +135,7 @@ namespace Holon.Protocol
         /// Creates an observable for this consumer.
         /// </summary>
         /// <returns></returns>
-        public IObservable<BrokerMessage> AsObservable() {
+        public IObservable<InboundMessage> AsObservable() {
             return _mailbox.AsObservable();
         }
         #endregion

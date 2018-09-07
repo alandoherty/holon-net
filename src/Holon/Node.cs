@@ -156,28 +156,24 @@ namespace Holon
                 broker = await wait.Task.ConfigureAwait(false);
 
             // send
-            await broker.SendAsync("", replyTo, null, replyId.ToString(), headers ?? new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase), body).ConfigureAwait(false);
+            await broker.SendAsync("", replyTo, body, headers ?? new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase), null, replyId.ToString()).ConfigureAwait(false);
         }
 
         /// <summary>
-        /// Sends the envelope message to the provided service address.
+        /// Sends the message to the provided service address.
         /// </summary>
-        /// <param name="addr">The service address.</param>
-        /// <param name="body">The body.</param>
-        /// <param name="headers">The headers.</param>
+        /// <param name="messages">The messages.</param>
         /// <returns></returns>
-        public Task SendAsync(string addr, byte[] body, IDictionary<string, object> headers = null) {
-            return SendAsync(new ServiceAddress(addr), body, headers);
+        public Task SendAsync(params Message[] messages) {
+            return SendAsync((IEnumerable<Message>)messages);
         }
 
         /// <summary>
-        /// Sends the envelope message to the provided service address.
+        /// Sends the message to the provided service address.
         /// </summary>
-        /// <param name="addr">The service address.</param>
-        /// <param name="body">The body.</param>
-        /// <param name="headers">The headers.</param>
+        /// <param name="messages">The messages.</param>
         /// <returns></returns>
-        public async Task SendAsync(ServiceAddress addr, byte[] body, IDictionary<string, object> headers = null) {
+        public async Task SendAsync(IEnumerable<Message> messages) {
             // wait for broker to become available
             TaskCompletionSource<Broker> wait = null;
             Broker broker = _broker;
@@ -191,11 +187,119 @@ namespace Holon
                 broker = await wait.Task.ConfigureAwait(false);
 
             // send
-            await broker.SendAsync(addr.Namespace, addr.RoutingKey, null, null, headers ?? new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase), body).ConfigureAwait(false);
+            await broker.SendAsync(messages.Select(m => {
+                return new OutboundMessage(m.Address.Namespace, m.Address.RoutingKey, m.Body, m.Headers ?? new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase), null, null);
+            }));
         }
 
         /// <summary>
-        /// Sends the envelope message to the provided service address and waits for a response.
+        /// Sends the message to the provided service address.
+        /// </summary>
+        /// <param name="message">The message.</param>
+        /// <returns></returns>
+        public async Task SendAsync(Message message) {
+            // wait for broker to become available
+            TaskCompletionSource<Broker> wait = null;
+            Broker broker = _broker;
+
+            lock (_broker) {
+                if (_brokerWait != null)
+                    wait = _brokerWait;
+            }
+
+            if (wait != null)
+                broker = await wait.Task.ConfigureAwait(false);
+
+            // send
+            await broker.SendAsync(message.Address.Namespace, message.Address.RoutingKey, message.Body, message.Headers ?? new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase), null, null)
+                .ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Sends the message to the provided service address.
+        /// </summary>
+        /// <param name="addr">The service address.</param>
+        /// <param name="body">The body.</param>
+        /// <param name="headers">The headers.</param>
+        /// <returns></returns>
+        public Task SendAsync(string addr, byte[] body, IDictionary<string, object> headers = null) {
+            return SendAsync(new Message() {
+                Address = new ServiceAddress(addr),
+                Body = body,
+                Headers = headers
+            });
+        }
+
+        /// <summary>
+        /// Sends the message to the provided service address.
+        /// </summary>
+        /// <param name="addr">The service address.</param>
+        /// <param name="body">The body.</param>
+        /// <param name="headers">The headers.</param>
+        /// <returns></returns>
+        public Task SendAsync(ServiceAddress addr, byte[] body, IDictionary<string, object> headers = null) {
+            return SendAsync(new Message() {
+                Address = addr,
+                Body = body,
+                Headers = headers
+            });
+        }
+
+        /// <summary>
+        /// Sends the message to the provided service address and waits for a response.
+        /// </summary>
+        /// <param name="messages">The messages.</param>
+        /// <param name="timeout">The timeout.</param>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns></returns>
+        public async Task<Task[]> AskAsync(Message[] messages, TimeSpan timeout, CancellationToken cancellationToken = default(CancellationToken)) {
+            // wait for broker to become available
+            TaskCompletionSource<Broker> wait = null;
+            Broker broker = _broker;
+
+            lock (_broker) {
+                if (_brokerWait != null)
+                    wait = _brokerWait;
+            }
+
+            if (wait != null)
+                broker = await wait.Task.ConfigureAwait(false);
+
+            // generate envelope ids
+            Guid[] envelopeIDs = new Guid[messages.Length];
+
+            for (int i = 0; i < envelopeIDs.Length; i++)
+                envelopeIDs[i] = Guid.NewGuid();
+
+            // generate headers
+            IDictionary<string, object>[] envelopeHeaders = new IDictionary<string, object>[messages.Length];
+
+            for (int i = 0; i < envelopeIDs.Length; i++) {
+                envelopeHeaders[i] = messages[i].Headers ?? new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase);
+
+                if (!envelopeHeaders[i].ContainsKey("x-message-ttl"))
+                    envelopeHeaders[i]["x-message-ttl"] = timeout.TotalSeconds;
+            }
+
+            // setup receive handlers
+            Task<Envelope>[] envelopeWaits = envelopeIDs.Select(g => WaitReplyAsync(g, timeout, cancellationToken)).ToArray();
+
+            // create messages
+            OutboundMessage[] outboundMessages = new OutboundMessage[messages.Length];
+
+            for (int i = 0; i < outboundMessages.Length; i++) {
+                outboundMessages[i] = new OutboundMessage(messages[i].Address.Namespace, messages[i].Address.RoutingKey, messages[i].Body, messages[i].Headers ?? new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase), _replyQueue.Name, envelopeIDs[i].ToString());
+            }
+
+            // send all messages
+            await broker.SendAsync(outboundMessages).ConfigureAwait(false);
+
+            // return the waits for all
+            return envelopeWaits;
+        }
+
+        /// <summary>
+        /// Sends the message to the provided service address and waits for a response.
         /// </summary>
         /// <param name="addr">The service adddress.</param>
         /// <param name="body">The body.</param>
@@ -228,7 +332,7 @@ namespace Holon
                 headers["x-message-ttl"] = timeout.TotalSeconds;
 
             // send
-            await broker.SendAsync(addr.Namespace, addr.RoutingKey, _replyQueue.Name, envelopeId.ToString(), headers, body).ConfigureAwait(false);
+            await broker.SendAsync(addr.Namespace, addr.RoutingKey, body, headers, _replyQueue.Name, envelopeId.ToString()).ConfigureAwait(false);
 
             // the actual receiver handler is setup since it's syncronous, but now we wait
             return await envelopeWait.ConfigureAwait(false);
@@ -538,7 +642,7 @@ namespace Holon
         private async void ReplyLoop() {
             while (!_disposed) {
                 // receieve broker message
-                BrokerMessage msg = null;
+                InboundMessage msg = null;
 
                 try {
                     msg = await _replyQueue.ReceiveAsync().ConfigureAwait(false);
@@ -567,13 +671,13 @@ namespace Holon
 
                 if (tcs == null) {
                     // log
-                    Console.WriteLine("messaging", "unroutable reply: {0}", envelope.ID);
+                    Console.WriteLine("unroutable reply: {0}", envelope.ID);
 
                     // trigger event
                     OnUnroutableReply(new UnroutableReplyEventArgs(envelope));
                 } else {
                     if (!tcs.TrySetResult(envelope)) {
-                        Console.WriteLine("messaging", "failed to route reply for {0}", envelope.ID);
+                        Console.WriteLine("failed to route reply for {0}", envelope.ID);
                     }
                 }
             }
@@ -767,9 +871,9 @@ namespace Holon
 
             // send event
             try {
-                await _broker.SendAsync(string.Format("!{0}", addr.Namespace), addr.Name, null, null, new Dictionary<string, object>() {
+                await _broker.SendAsync(string.Format("!{0}", addr.Namespace), addr.Name, body, new Dictionary<string, object>() {
                     { EventHeader.HEADER_NAME, new EventHeader(EventHeader.HEADER_VERSION, serializer.Name).ToString() }
-                }, body, false).ConfigureAwait(false);
+                }, null, null, false).ConfigureAwait(false);
             } catch (Exception) { }
         }
 

@@ -47,7 +47,7 @@ namespace Holon.Protocol
         /// Gets the subscription as an observable target.
         /// </summary>
         /// <returns></returns>
-        public IObservable<BrokerMessage> AsObservable() {
+        public IObservable<InboundMessage> AsObservable() {
             return _consumer.AsObservable();
         }
 
@@ -94,7 +94,7 @@ namespace Holon.Protocol
         /// Receives a message asyncronously.
         /// </summary>
         /// <returns>The message.</returns>
-        public Task<BrokerMessage> ReceiveAsync() {
+        public Task<InboundMessage> ReceiveAsync() {
             return ReceiveAsync(CancellationToken.None);
         }
 
@@ -103,7 +103,7 @@ namespace Holon.Protocol
         /// </summary>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns></returns>
-        public async Task<BrokerMessage> ReceiveAsync(CancellationToken cancellationToken) {
+        public async Task<InboundMessage> ReceiveAsync(CancellationToken cancellationToken) {
             return await _consumer.ReceiveAsync(cancellationToken).ConfigureAwait(false);
         }
 
@@ -112,7 +112,7 @@ namespace Holon.Protocol
         /// </summary>
         /// <param name="timeout">The timeout.</param>
         /// <returns></returns>
-        public async Task<BrokerMessage> ReceiveAsync(TimeSpan timeout) {
+        public async Task<InboundMessage> ReceiveAsync(TimeSpan timeout) {
             return await _consumer.ReceiveAsync(timeout).ConfigureAwait(false);
         }
 
