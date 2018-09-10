@@ -87,10 +87,6 @@ namespace Holon.Remoting.Serializers
                 return uint.Parse(argVal);
             else if (type == typeof(ulong))
                 return ulong.Parse(argVal);
-            else if (type == typeof(decimal))
-                return decimal.Parse(argVal);
-            else if (type == typeof(float))
-                return float.Parse(argVal);
             else if (type == typeof(bool))
                 return bool.Parse(argVal);
             else if (type == typeof(void))

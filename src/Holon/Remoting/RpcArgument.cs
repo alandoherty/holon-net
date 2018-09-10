@@ -114,12 +114,8 @@ namespace Holon.Remoting
                 return "uint32";
             else if (type == typeof(ulong))
                 return "uint64";
-            else if (type == typeof(decimal))
-                return "decimal";
-            else if (type == typeof(float))
-                return "float";
             else if (type == typeof(double))
-                return "float";
+                return "double";
             else if (type == typeof(bool))
                 return "bool";
             else if (type == typeof(void))
@@ -161,10 +157,6 @@ namespace Holon.Remoting
                     return typeof(uint);
                 case "uint64":
                     return typeof(ulong);
-                case "decimal":
-                    return typeof(decimal);
-                case "float":
-                    return typeof(float);
                 case "double":
                     return typeof(double);
                 case "bool":

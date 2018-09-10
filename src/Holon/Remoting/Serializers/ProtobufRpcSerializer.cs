@@ -166,18 +166,6 @@ namespace Holon.Remoting.Serializers
                 Data = BitConverter.GetBytes((uint)val);
             else if (val is ulong)
                 Data = BitConverter.GetBytes((ulong)val);
-            else if (val is decimal) {
-                int[] bits = decimal.GetBits((decimal)val);
-                byte[] bytes = new byte[16];
-
-                for (int i = 0; i < 4; i++) {
-                    byte[] bitBytes = BitConverter.GetBytes(bits[i]);
-                    Buffer.BlockCopy(bitBytes, 0, bytes, i * 4, 4);
-                }
-
-                Data = bytes;
-            } else if (val is float)
-                Data = BitConverter.GetBytes((float)val);
             else if (val is double)
                 Data = BitConverter.GetBytes((double)val);
             else if (val is bool)
@@ -191,7 +179,7 @@ namespace Holon.Remoting.Serializers
             else if (val is byte[])
                 Data = ((byte[])val);
             else if (val is DateTime)
-                Data = BitConverter.GetBytes(((DateTime)val).ToBinary());
+                Data = Encoding.UTF8.GetBytes(((DateTime)val).ToString());
             else {
                 TypeInfo typeInfo = val.GetType().GetTypeInfo();
 
@@ -230,14 +218,6 @@ namespace Holon.Remoting.Serializers
                 return BitConverter.ToUInt32(Data, 0);
             else if (type == typeof(ulong))
                 return BitConverter.ToUInt64(Data, 0);
-            else if (type == typeof(decimal)) {
-                int[] bits = new int[4];
-                for (int i = 0; i < 16; i += 4) {
-                    bits[i / 4] = BitConverter.ToInt32(Data, i);
-                }
-                return new decimal(bits);
-            } else if (type == typeof(float))
-                return BitConverter.ToSingle(Data, 0);
             else if (type == typeof(double))
                 return BitConverter.ToDouble(Data, 0);
             else if (type == typeof(bool))
@@ -251,7 +231,7 @@ namespace Holon.Remoting.Serializers
             else if (type == typeof(byte[]))
                 return Data;
             else if (type == typeof(DateTime))
-                return DateTime.FromBinary(BitConverter.ToInt64(Data, 0));
+                return DateTime.Parse(Encoding.UTF8.GetString(Data));
             else {
                 TypeInfo typeInfo = type.GetTypeInfo();
 
