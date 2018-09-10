@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Security;
 using System.Text;
 using System.Threading.Tasks;
 using Holon.Remoting.Serializers;
@@ -72,6 +73,10 @@ namespace Holon.Remoting
 
             if (attr == null)
                 throw new InvalidOperationException("The interface member must be decorated with an operation attribute");
+
+            // check encryption requirement
+            if ((_contractAttr.RequireEncryption || attr.RequireEncryption) && !_channel.IsEncrypted)
+                throw new SecurityException("The contract or operation requires an encrypted channel");
 
             // generate generic method
             Type genericType = typeof(bool);

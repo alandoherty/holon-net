@@ -19,5 +19,10 @@ namespace Holon.Remoting
         /// Gets or sets if no response should be expected.
         /// </summary>
         public bool NoReply { get; set; } = false;
+
+        /// <summary>
+        /// Gets or sets if this operation must communicate on an encrypted channel.
+        /// </summary>
+        public bool RequireEncryption { get; set; } = false;
     }
 }

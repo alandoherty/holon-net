@@ -7,7 +7,7 @@ namespace Holon.Remoting
     /// <summary>
     /// Defines the target interface as a service contract.
     /// </summary>
-    [AttributeUsage(AttributeTargets.Interface)]
+    [AttributeUsage(AttributeTargets.Interface, AllowMultiple = false)]
     public sealed class RpcContractAttribute : Attribute
     {
         #region Properties
@@ -20,6 +20,11 @@ namespace Holon.Remoting
         /// Gets or sets if this operation is visible to introspection.
         /// </summary>
         public bool AllowIntrospection { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets if operations in this contract must communicate on an encrypted channel.
+        /// </summary>
+        public bool RequireEncryption { get; set; } = false;
         #endregion
 
         #region Constructors

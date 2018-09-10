@@ -78,7 +78,9 @@ namespace Example.General
                 ThrowUnhandledExceptions = true
             });
 
-            /*(
+            await node.AttachAsync("auth:test", RpcBehaviour.Bind<ITest001>(new Test001()));
+
+            /*
             await node.AttachAsync("auth:test", new ServiceConfiguration() {
                 Filters = new IServiceFilter[] { new SecureFilter(new X509Certificate2("public_privatekey.pfx"), "bacon") }
             }, RpcBehaviour.Bind<ITest001>(new Test001()));*/
