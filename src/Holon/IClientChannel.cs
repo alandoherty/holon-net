@@ -28,8 +28,18 @@ namespace Holon
         /// <param name="headers">The headers.</param>
         /// <param name="timeout">The timeout.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
-        /// <returns></returns>
+        /// <returns>The response.</returns>
         Task<Envelope> AskAsync(byte[] body, TimeSpan timeout, IDictionary<string, object> headers = null, CancellationToken cancellationToken = default(CancellationToken));
+
+        /// <summary>
+        /// Broadcasts the envelope message to the provided service address and waits for any responses.
+        /// </summary>
+        /// <param name="body">The body.</param>
+        /// <param name="headers">The headers.</param>
+        /// <param name="timeout">The timeout to receive all replies.</param>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns>The responses.</returns>
+        Task<Envelope[]> BroadcastAsync(byte[] body, TimeSpan timeout, IDictionary<string, object> headers = null, CancellationToken cancellationToken = default(CancellationToken));
 
         // BatchedProxy BatchedProxy(ServiceAddress address);
         // BatchedProxy BatchedProxy(string address);

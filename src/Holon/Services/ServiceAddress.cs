@@ -7,7 +7,7 @@ namespace Holon.Services
     /// <summary>
     /// Represents a service address
     /// </summary>
-    public sealed class ServiceAddress
+    public sealed class ServiceAddress : IEquatable<ServiceAddress>
     {
         #region Fields
         private int _divIdx;
@@ -111,14 +111,23 @@ namespace Holon.Services
         /// Determines whether this instance is equal to the provided object.
         /// </summary>
         /// <param name="obj">The object.</param>
-        /// <returns></returns>
+        /// <returns>If the two objects are equal.</returns>
         public override bool Equals(object obj) {
             ServiceAddress addr = obj as ServiceAddress;
 
             if (addr == null)
                 return false;
 
-            return _addr.ToString().Equals(ToString(), StringComparison.CurrentCultureIgnoreCase);
+            return addr._addr.Equals(_addr, StringComparison.CurrentCultureIgnoreCase);
+        }
+
+        /// <summary>
+        /// Determines whether this address is equal to the provided address.
+        /// </summary>
+        /// <param name="other">The address.</param>
+        /// <returns>If the two addresses are equal.</returns>
+        public bool Equals(ServiceAddress other) {
+            return other._addr.Equals(_addr, StringComparison.CurrentCultureIgnoreCase);
         }
         #endregion
 

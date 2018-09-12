@@ -32,6 +32,15 @@ namespace Holon
                 return _msg;
             }
         }
+        
+        /// <summary>
+        /// Gets the target address.
+        /// </summary>
+        public ServiceAddress Address {
+            get {
+                return new ServiceAddress($"{_msg.Exchange}:{_msg.RoutingKey}");
+            }
+        }
 
         /// <summary>
         /// Gets the message headers.

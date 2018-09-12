@@ -43,7 +43,7 @@ namespace Holon
         private List<string> _declaredEventNamespaces = new List<string>();
 
         private BrokerQueue _replyQueue;
-        private Dictionary<Guid, TaskCompletionSource<Envelope>> _replyWaits = new Dictionary<Guid, TaskCompletionSource<Envelope>>();
+        private Dictionary<Guid, ReplyWait> _replyWaits = new Dictionary<Guid, ReplyWait>();
         private Service _queryService;
         
         internal static Dictionary<string, string> DefaultTags = new Dictionary<string, string>() {
@@ -352,26 +352,125 @@ namespace Holon
         }
 
         /// <summary>
+        /// Broadcasts the message to the provided service address and waits for any responses within the timeout.
+        /// </summary>
+        /// <param name="addr">The service adddress.</param>
+        /// <param name="body">The body.</param>
+        /// <param name="timeout">The timeout to receive all replies.</param>
+        /// <param name="headers">The headers.</param>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns></returns>
+        public async Task<Envelope[]> BroadcastAsync(ServiceAddress addr, byte[] body, TimeSpan timeout, IDictionary<string, object> headers = null, CancellationToken cancellationToken = default(CancellationToken)) {
+            if (timeout == Timeout.InfiniteTimeSpan)
+                throw new ArgumentException(nameof(timeout), "The timeout cannot be infinite for a broadcast");
+
+            // wait for broker to become available
+            TaskCompletionSource<Broker> wait = null;
+            Broker broker = _broker;
+
+            lock (_broker) {
+                if (_brokerWait != null)
+                    wait = _brokerWait;
+            }
+
+            if (wait != null)
+                broker = await wait.Task.ConfigureAwait(false);
+
+            // setup receive handler
+            Guid envelopeId = Guid.NewGuid();
+            Task<Envelope[]> envelopeWait = WaitManyReplyAsync(envelopeId, timeout, cancellationToken);
+
+            // add timeout header
+            if (headers == null)
+                headers = new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase);
+
+            if (!headers.ContainsKey("x-message-ttl"))
+                headers["x-message-ttl"] = timeout.TotalSeconds;
+
+            // send
+            await broker.SendAsync(addr.Namespace, addr.RoutingKey, body, headers, _replyQueue.Name, envelopeId.ToString()).ConfigureAwait(false);
+
+            // the actual receiver handler is setup since it's syncronous, but now we wait
+            return await envelopeWait.ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Broadcasts the message to the provided service address and waits for any responses within the timeout.
+        /// </summary>
+        /// <param name="addr">The service adddress.</param>
+        /// <param name="body">The body.</param>
+        /// <param name="timeout">The timeout.</param>
+        /// <param name="headers">The headers.</param>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns></returns>
+        public Task<Envelope[]> BroadcastAsync(string addr, byte[] body, TimeSpan timeout, IDictionary<string, object> headers = null, CancellationToken cancellationToken = default(CancellationToken)) {
+            return BroadcastAsync(new ServiceAddress(addr), body, timeout, headers, cancellationToken);
+        }
+
+        /// <summary>
         /// Waits for an envelope to be received on the reply queue with the provided envelope id.
         /// </summary>
-        /// <param name="envelopeId">The envelope id.</param>
-        /// <param name="timeout">The timeout.</param>
-        /// <param name="cancellation">The cancellation token.</param>
+        /// <param name="replyId">The envelope id.</param>
+        /// <param name="timeout">The timeout to receive all replies.</param>
+        /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns></returns>
-        public async Task<Envelope> WaitReplyAsync(Guid envelopeId, TimeSpan timeout, CancellationToken cancellation) {
+        internal async Task<Envelope[]> WaitManyReplyAsync(Guid replyId, TimeSpan timeout, CancellationToken cancellationToken = default(CancellationToken)) {
+            // create completion source
+            TaskCompletionSource<Envelope> tcs = new TaskCompletionSource<Envelope>();
+            List<Envelope> results = new List<Envelope>();
+
+            lock (_replyWaits) {
+                _replyWaits.Add(replyId, new ReplyWait() {
+                    CompletionSource = new TaskCompletionSource<Envelope>(),
+                    Results = results
+                });
+            }
+
+            // create the timeout and cancellation task
+            try {
+                Task timeoutTask = Task.Delay(timeout);
+                Task cancelTask = cancellationToken == CancellationToken.None ? null : Task.FromCanceled(cancellationToken);
+
+                // wait until either the operation times out, is cancelled or finishes
+                Task resultTask = cancelTask == null ? await Task.WhenAny(timeoutTask, tcs.Task).ConfigureAwait(false) :
+                    await Task.WhenAny(timeoutTask, tcs.Task, cancelTask).ConfigureAwait(false);
+
+                if (resultTask == timeoutTask || resultTask == cancelTask) {
+                    return results.ToArray();
+                } else {
+                    // the operation failed
+                    throw tcs.Task.Exception;
+                }
+            } finally {
+                lock (_replyWaits) {
+                    _replyWaits.Remove(replyId);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Waits for an envelope to be received on the reply queue with the provided envelope id.
+        /// </summary>
+        /// <param name="replyId">The envelope id.</param>
+        /// <param name="timeout">The timeout.</param>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns></returns>
+        internal async Task<Envelope> WaitReplyAsync(Guid replyId, TimeSpan timeout, CancellationToken cancellationToken = default(CancellationToken)) {
             // create completion source
             TaskCompletionSource<Envelope> tcs = new TaskCompletionSource<Envelope>();
 
             lock(_replyWaits) {
-                _replyWaits.Add(envelopeId, tcs);
+                _replyWaits.Add(replyId, new ReplyWait() {
+                    CompletionSource = tcs
+                });
             }
 
-            if (timeout == TimeSpan.Zero)
+            if (timeout == Timeout.InfiniteTimeSpan)
                 return await tcs.Task.ConfigureAwait(false);
             else {
                 // create the timeout and cancellation task
                 Task timeoutTask = Task.Delay(timeout);
-                Task cancelTask = cancellation == CancellationToken.None ? null : Task.FromCanceled(cancellation);
+                Task cancelTask = cancellationToken == CancellationToken.None ? null : Task.FromCanceled(cancellationToken);
 
                 // wait until either the operation times out, is cancelled or finishes
                 Task resultTask = cancelTask == null ? await Task.WhenAny(timeoutTask, tcs.Task).ConfigureAwait(false) :
@@ -402,10 +501,8 @@ namespace Holon
                 // trigger all reply waits
                 lock (_replyWaits) {
                     // copy dictionary over
-                    Dictionary<Guid, TaskCompletionSource<Envelope>> replyWaits = new Dictionary<Guid, TaskCompletionSource<Envelope>>(_replyWaits);
-
-                    foreach (KeyValuePair<Guid, TaskCompletionSource<Envelope>> kv in replyWaits) {
-                        kv.Value.TrySetException(new Exception("The underlying broker connection was lost"));
+                    foreach (KeyValuePair<Guid, ReplyWait> kv in _replyWaits) {
+                        kv.Value.CompletionSource.TrySetException(new Exception("The underlying broker connection was lost"));
                     }
 
                     _replyWaits.Clear();
@@ -477,13 +574,20 @@ namespace Holon
                     TaskCompletionSource<Envelope> tcs;
 
                     lock (_replyWaits) {
-                        if (!_replyWaits.TryGetValue(e.ID, out tcs))
+                        // try and get the reply wait
+                        if (!_replyWaits.TryGetValue(e.ID, out ReplyWait replyWait))
                             return;
 
+                        // if this is a multi-reply do nothing
+                        if (replyWait.Results == null)
+                            return;
+
+                        // remove and set exception
+                        tcs = replyWait.CompletionSource;
                         _replyWaits.Remove(e.ID);
                     }
 
-                    tcs.SetException(new Exception("The envelope was returned before delivery"));
+                    tcs.TrySetException(new Exception("The envelope was returned before delivery"));
                 }
             };
 
@@ -662,22 +766,29 @@ namespace Holon
                 }
 
                 // get completion source for this envelope
-                TaskCompletionSource<Envelope> tcs = null;
+                ReplyWait replyWait = default(ReplyWait);
+                bool foundReplyWait = false;
 
                 lock(_replyWaits) {
-                    if (_replyWaits.TryGetValue(envelope.ID, out tcs))
-                        _replyWaits.Remove(envelope.ID);
+                    foundReplyWait = _replyWaits.TryGetValue(envelope.ID, out replyWait);
                 }
 
-                if (tcs == null) {
+                if (!foundReplyWait) {
                     // log
                     Console.WriteLine("unroutable reply: {0}", envelope.ID);
 
                     // trigger event
                     OnUnroutableReply(new UnroutableReplyEventArgs(envelope));
                 } else {
-                    if (!tcs.TrySetResult(envelope)) {
-                        Console.WriteLine("failed to route reply for {0}", envelope.ID);
+                    // if it's a multi-reply add to results, if not set completion source
+                    if (replyWait.Results == null) {
+                        lock (_replyWaits) {
+                            _replyWaits.Remove(envelope.ID);
+                        }
+
+                        replyWait.CompletionSource.TrySetResult(envelope);
+                    } else {
+                        replyWait.Results.Add(envelope);
                     }
                 }
             }
@@ -1017,5 +1128,14 @@ namespace Holon
             _envelope = envelope;
         }
         #endregion
+    }
+
+    /// <summary>
+    /// Represents a reply waiting structure.
+    /// </summary>
+    struct ReplyWait
+    {
+        public TaskCompletionSource<Envelope> CompletionSource { get; set; }
+        public List<Envelope> Results { get; set; }
     }
 }

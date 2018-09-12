@@ -48,8 +48,6 @@ namespace Example.General
     {
         static void Main(string[] args) => AsyncMain(args).Wait();
 
-        private static bool go = true;
-
         public static async void ReadLoop(Node node) {
             ITest001 proxy = node.SecureProxy<ITest001>("auth:test", new SecureChannelConfiguration() {
                 ValidateAuthority = false,
@@ -77,13 +75,10 @@ namespace Example.General
             Node node = await Node.CreateFromEnvironmentAsync(new NodeConfiguration() {
                 ThrowUnhandledExceptions = true
             });
-
-            await node.AttachAsync("auth:test", RpcBehaviour.Bind<ITest001>(new Test001()));
-
-            /*
+            
             await node.AttachAsync("auth:test", new ServiceConfiguration() {
                 Filters = new IServiceFilter[] { new SecureFilter(new X509Certificate2("public_privatekey.pfx"), "bacon") }
-            }, RpcBehaviour.Bind<ITest001>(new Test001()));*/
+            }, RpcBehaviour.Bind<ITest001>(new Test001()));
 
             ReadLoop(node);
 

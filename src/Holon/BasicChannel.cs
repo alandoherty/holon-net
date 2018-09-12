@@ -118,6 +118,18 @@ namespace Holon
         public Task SendAsync(byte[] body, IDictionary<string, object> headers = null) {
             return _node.SendAsync(_address, body, headers);
         }
+
+        /// <summary>
+        /// Broadcasts the envelope message to the provided service address and waits for a response.
+        /// </summary>
+        /// <param name="body">The body.</param>
+        /// <param name="headers">The headers.</param>
+        /// <param name="timeout">The timeout to receive all replies.</param>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns></returns>
+        public Task<Envelope[]> BroadcastAsync(byte[] body, TimeSpan timeout, IDictionary<string, object> headers = null, CancellationToken cancellationToken = default(CancellationToken)) {
+            return _node.BroadcastAsync(_address, body, timeout, headers, cancellationToken);
+        }
         #endregion
 
         #region Constructors
