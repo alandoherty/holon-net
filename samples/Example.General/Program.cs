@@ -33,6 +33,16 @@ namespace Example.General
         Task<string> Login(LoginRequestMsg login);
     }
 
+    [ProtoContract]
+    class NameChangedEventData
+    {
+        [ProtoMember(1)]
+        public string OldName { get; set; }
+
+        [ProtoMember(2)]
+        public string NewName { get; set; }
+    }
+
     class Test001 : ITest001
     {
         static int si = 0;
@@ -40,12 +50,19 @@ namespace Example.General
 
         public async Task<string> Login(LoginRequestMsg login) {
             Console.WriteLine($"Worker Waiting {i} - Username: {login.Username} Password: {login.Password}");
+
+            await Program.TestNode.EmitAsync("user:bacon.name_change", new NameChangedEventData() {
+                OldName = "Bacon",
+                NewName = "Ham"
+            });
             return "landlocked";
         }
     }
 
     class Program
     {
+        public static Node TestNode { get; set; }
+
         static void Main(string[] args) => AsyncMain(args).Wait();
 
         public static async void ReadLoop(Node node) {
@@ -70,17 +87,36 @@ namespace Example.General
             }
         }
 
+        class Observer : IObserver<Event>
+        {
+            public void OnCompleted() {
+            }
+
+            public void OnError(Exception error) {
+            }
+
+            public void OnNext(Event value) {
+                NameChangedEventData changeData = value.Deserialize<NameChangedEventData>();
+
+                Console.WriteLine("Name changed: " + changeData.OldName + " -> " + changeData.NewName);
+            }
+        }
+
         static async Task AsyncMain(string[] args) {
             // attach node
-            Node node = await Node.CreateFromEnvironmentAsync(new NodeConfiguration() {
+            TestNode = await Node.CreateFromEnvironmentAsync(new NodeConfiguration() {
                 ThrowUnhandledExceptions = true
             });
             
-            await node.AttachAsync("auth:test", new ServiceConfiguration() {
+            await TestNode.AttachAsync("auth:test", new ServiceConfiguration() {
                 Filters = new IServiceFilter[] { new SecureFilter(new X509Certificate2("public_privatekey.pfx"), "bacon") }
             }, RpcBehaviour.Bind<ITest001>(new Test001()));
 
-            ReadLoop(node);
+            EventSubscription subscription = await TestNode.SubscribeAsync("user:bacon.*");
+
+            subscription.AsObservable().Subscribe(new Observer());
+
+            ReadLoop(TestNode);
 
             await Task.Delay(50000);
         }

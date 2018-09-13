@@ -11,7 +11,7 @@ namespace Holon.Events
     {
         #region Constants
         internal const string HEADER_NAME = "X-Event";
-        internal const string HEADER_VERSION = "1.0";
+        internal const string HEADER_VERSION = "1.1";
         #endregion
 
         #region Fields

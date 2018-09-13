@@ -23,7 +23,7 @@ namespace Holon.Events
         private EventAddress _address;
         #endregion
 
-        #region Fields
+        #region Properties
         /// <summary>
         /// Gets the event address.
         /// </summary>
@@ -52,7 +52,7 @@ namespace Holon.Events
             EventHeader header = new EventHeader(Encoding.UTF8.GetString(envelope.Headers[EventHeader.HEADER_NAME] as byte[]));
 
             // validate version
-            if (header.Version != "1.0")
+            if (header.Version != "1.1")
                 throw new NotSupportedException("Event version is not supported");
 
             // find serializer
@@ -65,6 +65,14 @@ namespace Holon.Events
             Event e = serializer.DeserializeEvent(envelope.Body);
 
             return e;
+        }
+
+        /// <summary>
+        /// Gets the subscription as an observable target.
+        /// </summary>
+        /// <returns>The observerable.</returns>
+        public IObservable<Event> AsObservable() {
+            return new EventObservable(this);
         }
 
         /// <summary>
@@ -121,6 +129,51 @@ namespace Holon.Events
             
             // dispose underlying queue
             _queue.Dispose();
+        }
+
+        /// <summary>
+        /// A pass through for observing events.
+        /// </summary>
+        class EventObservable : IObservable<Event>
+        {
+            private EventSubscription _sub;
+            private IObservable<InboundMessage> _observable;
+
+            public IDisposable Subscribe(IObserver<Event> observer) {
+                return _observable.Subscribe(new EventObserver(_sub, observer));
+            }
+
+            /// <summary>
+            /// Creates an observable event producer.
+            /// </summary>
+            /// <param name="sub">The subscription.</param>
+            public EventObservable(EventSubscription sub) {
+                _sub = sub;
+                _observable = sub._queue.AsObservable();
+            }
+        }
+
+        class EventObserver : IObserver<InboundMessage>
+        {
+            private IObserver<Event> _observer;
+            private EventSubscription _sub;
+
+            public EventObserver(EventSubscription sub, IObserver<Event> observer) {
+                _sub = sub;
+                _observer = observer;
+            }
+
+            public void OnCompleted() {
+                _observer.OnCompleted();
+            }
+
+            public void OnError(Exception error) {
+                _observer.OnError(error);
+            }
+
+            public void OnNext(InboundMessage value) {
+                _observer.OnNext(_sub.ProcessMessage(value));
+            }
         }
         #endregion
 

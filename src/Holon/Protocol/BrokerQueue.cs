@@ -15,10 +15,11 @@ namespace Holon.Protocol
         #region Fields
         private string _queue;
         private Broker _broker;
-        private bool _disposed;
         private AsyncConsumer _consumer;
         private string _consumerTag;
         private List<string> _exchanges = new List<string>();
+
+        private int _disposed;
         #endregion
 
         #region Properties
@@ -121,9 +122,8 @@ namespace Holon.Protocol
         /// </summary>
         public void Dispose() {
             // prevent disposing multiple times
-            if (_disposed)
+            if (Interlocked.CompareExchange(ref _disposed, 1, 0) == 1)
                 return;
-            _disposed = true;
 
             // delete consumer
             if (_consumer != null) {

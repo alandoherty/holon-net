@@ -3,6 +3,7 @@ using RabbitMQ.Client.Impl;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
@@ -70,27 +71,37 @@ namespace Holon.Protocol
         /// <param name="messages">The messages.</param>
         /// <returns></returns>
         public Task SendAsync(IEnumerable<OutboundMessage> messages) {
-            // create batch
-            IBasicPublishBatch batch = _channel.CreateBasicPublishBatch();
+            // get message array
+            OutboundMessage[] messageArr = messages.ToArray();
 
-            // add all the messages
-            foreach(OutboundMessage message in messages) {
-                IBasicProperties properties = _channel.CreateBasicProperties();
+            if (messageArr.Length == 0)
+                return Task.FromResult(true);
+            else if (messageArr.Length == 1) {
+                return SendAsync(messageArr[0]);
+            } else {
+                // create batch
+                IBasicPublishBatch batch = _channel.CreateBasicPublishBatch();
 
-                if (message.ReplyTo != null)
-                    properties.ReplyTo = message.ReplyTo;
-                if (message.Headers != null)
-                    properties.Headers = message.Headers;
-                if (message.ReplyID != null)
-                    properties.CorrelationId = message.ReplyID.ToString();
+                // add all the messages
+                foreach (OutboundMessage message in messageArr) {
+                    IBasicProperties properties = _channel.CreateBasicProperties();
 
-                batch.Add(message.Exchange, message.RoutingKey, message.Mandatory, properties, message.Body);
+                    if (message.ReplyTo != null)
+                        properties.ReplyTo = message.ReplyTo;
+                    if (message.Headers != null)
+                        properties.Headers = message.Headers;
+                    if (message.ReplyID != null)
+                        properties.CorrelationId = message.ReplyID.ToString();
+
+                    batch.Add(message.Exchange, message.RoutingKey, message.Mandatory, properties, message.Body);
+                }
+
+                return _ctx.AskWork(delegate () {
+                    batch.Publish();
+                    return null;
+                });
             }
-
-            return _ctx.AskWork(delegate () {
-                batch.Publish();
-                return null;
-            });
+            
         }
 
         /// <summary>

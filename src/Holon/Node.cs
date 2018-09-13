@@ -996,7 +996,7 @@ namespace Holon
         /// <exception cref="FormatException">If the event address is invalid.</exception>
         /// <returns></returns>
         public Task EmitAsync(string addr, object data) {
-            return EmitAsync(addr, data);
+            return EmitAsync(new EventAddress(addr), data);
         }
         
         /// <summary>
