@@ -1016,7 +1016,7 @@ namespace Holon
                 rng.GetBytes(uniqueId);
                 string uniqueIdStr = BitConverter.ToString(uniqueId).Replace("-", "").ToLower();
 
-                brokerQueue = await _broker.CreateQueueAsync(string.Format("!{0}%{1}", addr.ToString(), uniqueIdStr), false, true, string.Format("!{0}", addr.Namespace), addr.Name, true, true).ConfigureAwait(false);
+                brokerQueue = await _broker.CreateQueueAsync(string.Format("!{0}%{1}", addr.ToString(), uniqueIdStr), false, true, string.Format("!{0}", addr.Namespace), $"{addr.Resource}.{addr.Name}", true, true).ConfigureAwait(false);
             }
 
             // create subscription

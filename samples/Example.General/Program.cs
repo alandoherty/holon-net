@@ -105,7 +105,6 @@ namespace Example.General
                 await TestNode.EmitAsync("user:alan.test", new EventTest() {
                     Potato = "Wow"
                 });
-                await Task.Delay(250);
             }
 
             ReadLoop(TestNode);
