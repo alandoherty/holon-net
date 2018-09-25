@@ -176,7 +176,7 @@ namespace Holon.Services
 
             if (Type == ServiceType.Singleton) {
                 // declare one exclusive queue
-                _queue = await _broker.CreateQueueAsync(_addr.ToString(), false, true, _addr.Namespace, _addr.RoutingKey, null).ConfigureAwait(false);
+                _queue = await _broker.CreateQueueAsync(_addr.ToString(), false, true, _addr.Namespace, _addr.RoutingKey).ConfigureAwait(false);
             } else if (Type == ServiceType.Fanout) {
                 // declare queue with unique name
                 using (RandomNumberGenerator rng = RandomNumberGenerator.Create()) {
@@ -185,11 +185,11 @@ namespace Holon.Services
                     rng.GetBytes(uniqueId);
                     string uniqueIdStr = BitConverter.ToString(uniqueId).Replace("-", "").ToLower();
 
-                    _queue = await _broker.CreateQueueAsync(string.Format("{0}%{1}", _addr.ToString(), uniqueIdStr), false, false, _addr.Namespace, _addr.RoutingKey, null).ConfigureAwait(false);
+                    _queue = await _broker.CreateQueueAsync(string.Format("{0}%{1}", _addr.ToString(), uniqueIdStr), false, false, _addr.Namespace, _addr.RoutingKey).ConfigureAwait(false);
                 }
             } else if (Type == ServiceType.Balanced) {
                 // declare one queue shared between many
-                _queue = await _broker.CreateQueueAsync(_addr.ToString(), false, false, _addr.Namespace, _addr.RoutingKey, null).ConfigureAwait(false);
+                _queue = await _broker.CreateQueueAsync(_addr.ToString(), false, false, _addr.Namespace, _addr.RoutingKey).ConfigureAwait(false);
             }
 
             // setup semaphore

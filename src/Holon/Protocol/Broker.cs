@@ -154,45 +154,6 @@ namespace Holon.Protocol
                 return null;
             });
         }
-        
-        /// <summary>
-        /// Creates a new queue on this broker.
-        /// </summary>
-        /// <param name="durable">If the queue is durable.</param>
-        /// <param name="exclusive">If the queue is exclusive.</param>
-        /// <param name="exchange">The exchange.</param>
-        /// <param name="routingKey">The routing key.</param>
-        /// <returns>The broker queue.</returns>
-        public Task<BrokerQueue> CreateQueueAsync(bool durable, bool exclusive, string exchange, string routingKey) {
-            return CreateQueueAsync("", durable, exclusive, exchange, routingKey, true, null);
-        }
-
-        /// <summary>
-        /// Creates a new queue on this broker.
-        /// </summary>
-        /// <param name="durable">If the queue is durable.</param>
-        /// <param name="exclusive">If the queue is exclusive.</param>
-        /// <param name="exchange">The exchange.</param>
-        /// <param name="routingKey">The routing key.</param>
-        /// <param name="arguments">The arguments.</param>
-        /// <returns>The broker queue.</returns>
-        public Task<BrokerQueue> CreateQueueAsync(bool durable, bool exclusive, string exchange, string routingKey, IDictionary<string, object> arguments) {
-            return CreateQueueAsync("", durable, exclusive, exchange, routingKey, true, arguments);
-        }
-
-        /// <summary>
-        /// Creates a new queue on this broker.
-        /// </summary>
-        /// <param name="name">The queue name.</param>
-        /// <param name="durable">If the queue is durable.</param>
-        /// <param name="exclusive">If the queue is exclusive.</param>
-        /// <param name="exchange">The exchange.</param>
-        /// <param name="routingKey">The routing key.</param>
-        /// <param name="arguments">The arguments.</param>
-        /// <returns>The broker queue.</returns>
-        public Task<BrokerQueue> CreateQueueAsync(string name, bool durable, bool exclusive, string exchange, string routingKey, IDictionary<string, object> arguments) {
-            return CreateQueueAsync(name, durable, exclusive, exchange, routingKey, true, arguments);
-        }
 
         /// <summary>
         /// Creates a new queue on this broker.
@@ -203,12 +164,13 @@ namespace Holon.Protocol
         /// <param name="exchange">The exchange.</param>
         /// <param name="routingKey">The routing key.</param>
         /// <param name="autoDelete">If to auto delete when all consumers unbind.</param>
+        /// <param name="autoAck">If to automatically acknowledge envelopes.</param>
         /// <param name="arguments">The arguments.</param>
         /// <returns>The broker queue.</returns>
-        public async Task<BrokerQueue> CreateQueueAsync(string name, bool durable, bool exclusive, string exchange, string routingKey, bool autoDelete, IDictionary<string, object> arguments) {
+        public async Task<BrokerQueue> CreateQueueAsync(string name = "", bool durable = false, bool exclusive = true, string exchange = "", string routingKey = "", bool autoDelete = true, bool autoAck = false, IDictionary<string, object> arguments = null) {
             // declare queue
             QueueDeclareOk ok = await _ctx.AskWork<QueueDeclareOk>(delegate () {
-                return _channel.QueueDeclare(name, durable, exclusive, autoDelete, arguments);
+                return _channel.QueueDeclare(name, durable, exclusive, autoDelete, arguments ?? new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase));
             }).ConfigureAwait(false);
 
             // create consumer
@@ -219,7 +181,7 @@ namespace Holon.Protocol
 
             try {
                 consumerTag = (string)await _ctx.AskWork(delegate () {
-                    return _channel.BasicConsume(name, false, "", false, false, null, consumer);
+                    return _channel.BasicConsume(name, autoAck, "", false, false, null, consumer);
                 }).ConfigureAwait(false);
             } catch (Exception) {
                 throw;

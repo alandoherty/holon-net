@@ -72,21 +72,41 @@ namespace Example.General
                 await Task.Delay(3000);
             }
         }
-        
+
+        class EventTest
+        {
+            public string Potato { get; set; }
+        }
+
+        class EventObserver : IObserver<Event>
+        { 
+            public void OnCompleted() {
+            }
+
+            public void OnError(Exception error) {
+            }
+
+            public void OnNext(Event value) {
+                Console.WriteLine(value.Data.Length);
+            }
+        }
+
         static async Task AsyncMain(string[] args) {
             // attach node
             TestNode = await Node.CreateFromEnvironmentAsync(new NodeConfiguration() {
                 ThrowUnhandledExceptions = true
             });
-            
-            await TestNode.AttachAsync("auth:test", ServiceType.Balanced, RpcBehaviour.Bind<ITest001>(new Test001()));
 
-            ITest001 proxy = TestNode.Proxy<ITest001>("auth:test");
+            var sub = await TestNode.SubscribeAsync("user:alan.*");
 
-            string a = await proxy.Login(new LoginRequestMsg() {
-                Username = "wow",
-                Password = "Wow"
-            });
+            sub.AsObservable().Subscribe(new EventObserver());
+
+            while(true) {
+                await TestNode.EmitAsync("user:alan.test", new EventTest() {
+                    Potato = "Wow"
+                });
+                await Task.Delay(250);
+            }
 
             ReadLoop(TestNode);
 

@@ -600,7 +600,7 @@ namespace Holon
                     rng.GetBytes(uniqueId);
                     string uniqueIdStr = BitConverter.ToString(uniqueId).Replace("-", "").ToLower();
 
-                    _replyQueue = await _broker.CreateQueueAsync(string.Format("~reply:{1}%{0}", _uuid, uniqueIdStr), false, true, "", "", new Dictionary<string, object>() {
+                    _replyQueue = await _broker.CreateQueueAsync(string.Format("~reply:{1}%{0}", _uuid, uniqueIdStr), false, true, "", "", true, false, new Dictionary<string, object>() {
                         { "x-expires", (int)TimeSpan.FromMinutes(15).TotalMilliseconds }
                     }).ConfigureAwait(false);
                 }
@@ -1016,7 +1016,7 @@ namespace Holon
                 rng.GetBytes(uniqueId);
                 string uniqueIdStr = BitConverter.ToString(uniqueId).Replace("-", "").ToLower();
 
-                brokerQueue = await _broker.CreateQueueAsync(string.Format("!{0}%{1}", addr.ToString(), uniqueIdStr), false, true, string.Format("!{0}", addr.Namespace), addr.Name, null).ConfigureAwait(false);
+                brokerQueue = await _broker.CreateQueueAsync(string.Format("!{0}%{1}", addr.ToString(), uniqueIdStr), false, true, string.Format("!{0}", addr.Namespace), addr.Name, true, true).ConfigureAwait(false);
             }
 
             // create subscription
