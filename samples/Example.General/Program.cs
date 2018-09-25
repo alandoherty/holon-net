@@ -33,16 +33,6 @@ namespace Example.General
         Task<string> Login(LoginRequestMsg login);
     }
 
-    [ProtoContract]
-    class NameChangedEventData
-    {
-        [ProtoMember(1)]
-        public string OldName { get; set; }
-
-        [ProtoMember(2)]
-        public string NewName { get; set; }
-    }
-
     class Test001 : ITest001
     {
         static int si = 0;
@@ -51,10 +41,6 @@ namespace Example.General
         public async Task<string> Login(LoginRequestMsg login) {
             Console.WriteLine($"Worker Waiting {i} - Username: {login.Username} Password: {login.Password}");
 
-            await Program.TestNode.EmitAsync("user:bacon.name_change", new NameChangedEventData() {
-                OldName = "Bacon",
-                NewName = "Ham"
-            });
             return "landlocked";
         }
     }
@@ -86,35 +72,21 @@ namespace Example.General
                 await Task.Delay(3000);
             }
         }
-
-        class Observer : IObserver<Event>
-        {
-            public void OnCompleted() {
-            }
-
-            public void OnError(Exception error) {
-            }
-
-            public void OnNext(Event value) {
-                NameChangedEventData changeData = value.Deserialize<NameChangedEventData>();
-
-                Console.WriteLine("Name changed: " + changeData.OldName + " -> " + changeData.NewName);
-            }
-        }
-
+        
         static async Task AsyncMain(string[] args) {
             // attach node
             TestNode = await Node.CreateFromEnvironmentAsync(new NodeConfiguration() {
                 ThrowUnhandledExceptions = true
             });
             
-            await TestNode.AttachAsync("auth:test", new ServiceConfiguration() {
-                Filters = new IServiceFilter[] { new SecureFilter(new X509Certificate2("public_privatekey.pfx"), "bacon") }
-            }, RpcBehaviour.Bind<ITest001>(new Test001()));
+           // await TestNode.AttachAsync("auth:test", ServiceType.Balanced, RpcBehaviour.Bind<ITest001>(new Test001()));
 
-            EventSubscription subscription = await TestNode.SubscribeAsync("user:bacon.*");
+            ITest001 proxy = TestNode.Proxy<ITest001>("auth:test");
 
-            subscription.AsObservable().Subscribe(new Observer());
+            string a = await proxy.Login(new LoginRequestMsg() {
+                Username = "wow",
+                Password = "Wow"
+            });
 
             ReadLoop(TestNode);
 

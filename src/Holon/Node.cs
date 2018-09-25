@@ -579,7 +579,7 @@ namespace Holon
                             return;
 
                         // if this is a multi-reply do nothing
-                        if (replyWait.Results == null)
+                        if (replyWait.Results != null)
                             return;
 
                         // remove and set exception
