@@ -600,7 +600,7 @@ namespace Holon
                     rng.GetBytes(uniqueId);
                     string uniqueIdStr = BitConverter.ToString(uniqueId).Replace("-", "").ToLower();
 
-                    _replyQueue = await _broker.CreateQueueAsync(string.Format("~reply:{1}%{0}", _uuid, uniqueIdStr), false, true, "", "", true, false, new Dictionary<string, object>() {
+                    _replyQueue = await _broker.CreateQueueAsync(string.Format("~reply:{1}%{0}", _uuid, uniqueIdStr), false, true, "", "", true, true, new Dictionary<string, object>() {
                         { "x-expires", (int)TimeSpan.FromMinutes(15).TotalMilliseconds }
                     }).ConfigureAwait(false);
                 }
