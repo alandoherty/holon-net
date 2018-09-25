@@ -46,7 +46,7 @@ namespace Holon.Remoting
             // gets the header
             RpcHeader header = new RpcHeader(Encoding.UTF8.GetString(rpcHeader as byte[]));
 
-            if (header.Version == RpcHeader.HEADER_VERSION) {
+            if (header.Version == "1.1") {
                 return ApplyAsync(header, envelope);
             } else {
                 throw new NotSupportedException("The RPC version is not supported");

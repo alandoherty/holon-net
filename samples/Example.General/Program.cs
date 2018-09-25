@@ -79,7 +79,7 @@ namespace Example.General
                 ThrowUnhandledExceptions = true
             });
             
-           // await TestNode.AttachAsync("auth:test", ServiceType.Balanced, RpcBehaviour.Bind<ITest001>(new Test001()));
+            await TestNode.AttachAsync("auth:test", ServiceType.Balanced, RpcBehaviour.Bind<ITest001>(new Test001()));
 
             ITest001 proxy = TestNode.Proxy<ITest001>("auth:test");
 
