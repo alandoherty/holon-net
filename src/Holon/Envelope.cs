@@ -17,7 +17,7 @@ namespace Holon
     public sealed class Envelope
     {
         #region Fields
-        private Node _node;
+        private Namespace _namespace;
         private InboundMessage _msg;
         private byte[] _body;
         private IReplyChannel _channel;
@@ -52,11 +52,20 @@ namespace Holon
         }
 
         /// <summary>
+        /// Gets the namespace the messaged was received on.
+        /// </summary>
+        internal Namespace Namespace {
+            get {
+                return _namespace;
+            }
+        }
+
+        /// <summary>
         /// Gets the node the messaged was received on.
         /// </summary>
         public Node Node {
             get {
-                return _node;
+                return _namespace.Node;
             }
         }
 
@@ -150,7 +159,7 @@ namespace Holon
             if (_channel != null)
                 return _channel.ReplyAsync(body, headers ?? new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase));
             else
-                return _node.ReplyAsync(ReplyTo, ID, body, headers ?? new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase));
+                return _namespace.ReplyAsync(ReplyTo, ID, body, headers ?? new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase));
         }
 
         /// <summary>
@@ -206,10 +215,10 @@ namespace Holon
         /// Creates a new envelope containing a message.
         /// </summary>
         /// <param name="msg">The message.</param>
-        /// <param name="node">The receiving node.</param>
-        internal Envelope(InboundMessage msg, Node node) {
+        /// <param name="namespace">The namespace.</param>
+        internal Envelope(InboundMessage msg, Namespace @namespace) {
             _msg = msg;
-            _node = node;
+            _namespace = @namespace;
         }
         #endregion
     }

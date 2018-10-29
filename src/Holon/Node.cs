@@ -27,9 +27,6 @@ namespace Holon
     public sealed class Node : IDisposable
     {
         #region Fields
-        private BrokerContext _brokerContext;
-        private Broker _broker;
-
         private Guid _uuid;
 
         private NodeConfiguration _configuration;
@@ -40,12 +37,10 @@ namespace Holon
         private string _appVersion;
         private List<Service> _services = new List<Service>();
 
-        private List<string> _declaredEventNamespaces = new List<string>();
-
-        private BrokerQueue _replyQueue;
-        private Dictionary<Guid, ReplyWait> _replyWaits = new Dictionary<Guid, ReplyWait>();
         private Service _queryService;
-        
+
+        private List<Namespace> _namespaces;
+
         internal static Dictionary<string, string> DefaultTags = new Dictionary<string, string>() {
             { "RPCVersion", RpcHeader.HEADER_VERSION },
             { "RPCSerializers", "pbuf,xml" }
@@ -61,27 +56,27 @@ namespace Holon
         /// <summary>
         /// </summary>
         /// <param name="e">The event arguments.</param>
-        private void OnUnroutableReply(UnroutableReplyEventArgs e) {
+        internal void OnUnroutableReply(UnroutableReplyEventArgs e) {
             UnroutableReply?.Invoke(this, e);
         }
         #endregion
 
         #region Properties
         /// <summary>
+        /// Gets the configuration.
+        /// </summary>
+        internal NodeConfiguration Configuration {
+            get {
+                return _configuration;
+            }
+        }
+
+        /// <summary>
         /// Gets the underlying introspection service.
         /// </summary>
         public Service QueryService {
             get {
                 return _queryService;
-            }
-        }
-
-        /// <summary>
-        /// Gets the underlying broker.
-        /// </summary>
-        internal Broker Broker {
-            get {
-                return _broker;
             }
         }
 
@@ -135,28 +130,46 @@ namespace Holon
 
         #region Service Messaging
         /// <summary>
+        /// Gets the namespace for the match.
+        /// </summary>
+        /// <param name="match">The namespace.</param>
+        /// <returns>The namespace.</returns>
+        internal Namespace GetNamespace(string match) {
+            if (!TryGetNamespace(match, out Namespace @namespace))
+                throw new InvalidOperationException("The message cannot be routed as no namespace can be matched");
+
+            return @namespace;
+        }
+
+        /// <summary>
+        /// Gets the namespace for the match.
+        /// </summary>
+        /// <param name="match">The namespace.</param>
+        /// <param name="namespace">The output namespace.</param>
+        /// <returns>If the namespace was found.</returns>
+        internal bool TryGetNamespace(string match, out Namespace @namespace) {
+            foreach(Namespace n in _namespaces) {
+                if (n.Match(match)) {
+                    @namespace = n;
+                    return true;
+                }
+            }
+
+            @namespace = null;
+            return false;
+        }
+
+        /// <summary>
         /// Replys to a message.
         /// </summary>
+        /// <param name="namespace">The namespace.</param>
         /// <param name="replyTo">The reply to address.</param>
         /// <param name="replyId">The envelope ID.</param>
         /// <param name="body">The body.</param>
         /// <param name="headers">The headers.</param>
         /// <returns></returns>
-        internal async Task ReplyAsync(string replyTo, Guid replyId, byte[] body, IDictionary<string, object> headers = null) {
-            // wait for broker to become available
-            TaskCompletionSource<Broker> wait = null;
-            Broker broker = _broker;
-
-            lock (_broker) {
-                if (_brokerWait != null)
-                    wait = _brokerWait;
-            }
-
-            if (wait != null)
-                broker = await wait.Task.ConfigureAwait(false);
-
-            // send
-            await broker.SendAsync("", replyTo, body, headers ?? new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase), null, replyId.ToString()).ConfigureAwait(false);
+        internal Task ReplyAsync(Namespace @namespace, string replyTo, Guid replyId, byte[] body, IDictionary<string, object> headers = null) {
+            return @namespace.ReplyAsync(replyTo, replyId, body, headers);
         }
 
         /// <summary>
@@ -173,23 +186,19 @@ namespace Holon
         /// </summary>
         /// <param name="messages">The messages.</param>
         /// <returns></returns>
-        public async Task SendAsync(IEnumerable<Message> messages) {
-            // wait for broker to become available
-            TaskCompletionSource<Broker> wait = null;
-            Broker broker = _broker;
+        public Task SendAsync(IEnumerable<Message> messages) {
+            // group by namespaces, hopefully they are all same namespace so we get that sweet sweet performance
+            var groupedMessages = messages.GroupBy(m => m.Address.Namespace, StringComparer.CurrentCultureIgnoreCase);
+            List<Task> groupTasks = new List<Task>(1);
 
-            lock (_broker) {
-                if (_brokerWait != null)
-                    wait = _brokerWait;
+            foreach (IGrouping<string, Message> group in groupedMessages) {
+                // get the namespace
+                Namespace @namespace = GetNamespace(group.Key);
+
+                groupTasks.Add(@namespace.SendAsync(group));
             }
 
-            if (wait != null)
-                broker = await wait.Task.ConfigureAwait(false);
-
-            // send
-            await broker.SendAsync(messages.Select(m => {
-                return new OutboundMessage(m.Address.Namespace, m.Address.RoutingKey, m.Body, m.Headers ?? new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase), null, null);
-            }));
+            return Task.WhenAll(groupTasks);
         }
 
         /// <summary>
@@ -197,22 +206,11 @@ namespace Holon
         /// </summary>
         /// <param name="message">The message.</param>
         /// <returns></returns>
-        public async Task SendAsync(Message message) {
-            // wait for broker to become available
-            TaskCompletionSource<Broker> wait = null;
-            Broker broker = _broker;
+        public Task SendAsync(Message message) {
+            // get namespace
+            Namespace @namespace = GetNamespace(message.Address.Namespace);
 
-            lock (_broker) {
-                if (_brokerWait != null)
-                    wait = _brokerWait;
-            }
-
-            if (wait != null)
-                broker = await wait.Task.ConfigureAwait(false);
-
-            // send
-            await broker.SendAsync(message.Address.Namespace, message.Address.RoutingKey, message.Body, message.Headers ?? new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase), null, null)
-                .ConfigureAwait(false);
+            return @namespace.SendAsync(message);
         }
 
         /// <summary>
@@ -248,94 +246,17 @@ namespace Holon
         /// <summary>
         /// Sends the message to the provided service address and waits for a response.
         /// </summary>
-        /// <param name="messages">The messages.</param>
-        /// <param name="timeout">The timeout.</param>
-        /// <param name="cancellationToken">The cancellation token.</param>
-        /// <returns></returns>
-        public async Task<Task[]> AskAsync(Message[] messages, TimeSpan timeout, CancellationToken cancellationToken = default(CancellationToken)) {
-            // wait for broker to become available
-            TaskCompletionSource<Broker> wait = null;
-            Broker broker = _broker;
-
-            lock (_broker) {
-                if (_brokerWait != null)
-                    wait = _brokerWait;
-            }
-
-            if (wait != null)
-                broker = await wait.Task.ConfigureAwait(false);
-
-            // generate envelope ids
-            Guid[] envelopeIDs = new Guid[messages.Length];
-
-            for (int i = 0; i < envelopeIDs.Length; i++)
-                envelopeIDs[i] = Guid.NewGuid();
-
-            // generate headers
-            IDictionary<string, object>[] envelopeHeaders = new IDictionary<string, object>[messages.Length];
-
-            for (int i = 0; i < envelopeIDs.Length; i++) {
-                envelopeHeaders[i] = messages[i].Headers ?? new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase);
-
-                if (!envelopeHeaders[i].ContainsKey("x-message-ttl"))
-                    envelopeHeaders[i]["x-message-ttl"] = timeout.TotalSeconds;
-            }
-
-            // setup receive handlers
-            Task<Envelope>[] envelopeWaits = envelopeIDs.Select(g => WaitReplyAsync(g, timeout, cancellationToken)).ToArray();
-
-            // create messages
-            OutboundMessage[] outboundMessages = new OutboundMessage[messages.Length];
-
-            for (int i = 0; i < outboundMessages.Length; i++) {
-                outboundMessages[i] = new OutboundMessage(messages[i].Address.Namespace, messages[i].Address.RoutingKey, messages[i].Body, messages[i].Headers ?? new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase), _replyQueue.Name, envelopeIDs[i].ToString());
-            }
-
-            // send all messages
-            await broker.SendAsync(outboundMessages).ConfigureAwait(false);
-
-            // return the waits for all
-            return envelopeWaits;
-        }
-
-        /// <summary>
-        /// Sends the message to the provided service address and waits for a response.
-        /// </summary>
         /// <param name="addr">The service adddress.</param>
         /// <param name="body">The body.</param>
         /// <param name="timeout">The timeout.</param>
         /// <param name="headers">The headers.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns></returns>
-        public async Task<Envelope> AskAsync(ServiceAddress addr, byte[] body, TimeSpan timeout, IDictionary<string, object> headers = null, CancellationToken cancellationToken = default(CancellationToken)) {
-            // wait for broker to become available
-            TaskCompletionSource<Broker> wait = null;
-            Broker broker = _broker;
+        public Task<Envelope> AskAsync(ServiceAddress addr, byte[] body, TimeSpan timeout, IDictionary<string, object> headers = null, CancellationToken cancellationToken = default(CancellationToken)) {
+            // get namespace
+            Namespace @namespace = GetNamespace(addr.Namespace);
 
-            lock (_broker) {
-                if (_brokerWait != null)
-                    wait = _brokerWait;
-            }
-
-            if (wait != null)
-                broker = await wait.Task.ConfigureAwait(false);
-
-            // setup receive handler
-            Guid envelopeId = Guid.NewGuid();
-            Task<Envelope> envelopeWait = WaitReplyAsync(envelopeId, timeout, cancellationToken);
-
-            // add timeout header
-            if (headers == null)
-                headers = new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase);
-
-            if (!headers.ContainsKey("x-message-ttl"))
-                headers["x-message-ttl"] = timeout.TotalSeconds;
-
-            // send
-            await broker.SendAsync(addr.Namespace, addr.RoutingKey, body, headers, _replyQueue.Name, envelopeId.ToString()).ConfigureAwait(false);
-
-            // the actual receiver handler is setup since it's syncronous, but now we wait
-            return await envelopeWait.ConfigureAwait(false);
+            return @namespace.AskAsync(addr, body, timeout, headers, cancellationToken);
         }
 
         /// <summary>
@@ -360,38 +281,10 @@ namespace Holon
         /// <param name="headers">The headers.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns></returns>
-        public async Task<Envelope[]> BroadcastAsync(ServiceAddress addr, byte[] body, TimeSpan timeout, IDictionary<string, object> headers = null, CancellationToken cancellationToken = default(CancellationToken)) {
-            if (timeout == Timeout.InfiniteTimeSpan)
-                throw new ArgumentException(nameof(timeout), "The timeout cannot be infinite for a broadcast");
+        public Task<Envelope[]> BroadcastAsync(ServiceAddress addr, byte[] body, TimeSpan timeout, IDictionary<string, object> headers = null, CancellationToken cancellationToken = default(CancellationToken)) {
+            Namespace @namespace = GetNamespace(addr.Namespace);
 
-            // wait for broker to become available
-            TaskCompletionSource<Broker> wait = null;
-            Broker broker = _broker;
-
-            lock (_broker) {
-                if (_brokerWait != null)
-                    wait = _brokerWait;
-            }
-
-            if (wait != null)
-                broker = await wait.Task.ConfigureAwait(false);
-
-            // setup receive handler
-            Guid envelopeId = Guid.NewGuid();
-            Task<Envelope[]> envelopeWait = WaitManyReplyAsync(envelopeId, timeout, cancellationToken);
-
-            // add timeout header
-            if (headers == null)
-                headers = new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase);
-
-            if (!headers.ContainsKey("x-message-ttl"))
-                headers["x-message-ttl"] = timeout.TotalSeconds;
-
-            // send
-            await broker.SendAsync(addr.Namespace, addr.RoutingKey, body, headers, _replyQueue.Name, envelopeId.ToString()).ConfigureAwait(false);
-
-            // the actual receiver handler is setup since it's syncronous, but now we wait
-            return await envelopeWait.ConfigureAwait(false);
+            return @namespace.BroadcastAsync(addr, body, timeout, headers, cancellationToken);
         }
 
         /// <summary>
@@ -406,88 +299,10 @@ namespace Holon
         public Task<Envelope[]> BroadcastAsync(string addr, byte[] body, TimeSpan timeout, IDictionary<string, object> headers = null, CancellationToken cancellationToken = default(CancellationToken)) {
             return BroadcastAsync(new ServiceAddress(addr), body, timeout, headers, cancellationToken);
         }
-
-        /// <summary>
-        /// Waits for an envelope to be received on the reply queue with the provided envelope id.
-        /// </summary>
-        /// <param name="replyId">The envelope id.</param>
-        /// <param name="timeout">The timeout to receive all replies.</param>
-        /// <param name="cancellationToken">The cancellation token.</param>
-        /// <returns></returns>
-        internal async Task<Envelope[]> WaitManyReplyAsync(Guid replyId, TimeSpan timeout, CancellationToken cancellationToken = default(CancellationToken)) {
-            // create completion source
-            TaskCompletionSource<Envelope> tcs = new TaskCompletionSource<Envelope>();
-            List<Envelope> results = new List<Envelope>();
-
-            lock (_replyWaits) {
-                _replyWaits.Add(replyId, new ReplyWait() {
-                    CompletionSource = new TaskCompletionSource<Envelope>(),
-                    Results = results
-                });
-            }
-
-            // create the timeout and cancellation task
-            try {
-                Task timeoutTask = Task.Delay(timeout);
-                Task cancelTask = cancellationToken == CancellationToken.None ? null : Task.FromCanceled(cancellationToken);
-
-                // wait until either the operation times out, is cancelled or finishes
-                Task resultTask = cancelTask == null ? await Task.WhenAny(timeoutTask, tcs.Task).ConfigureAwait(false) :
-                    await Task.WhenAny(timeoutTask, tcs.Task, cancelTask).ConfigureAwait(false);
-
-                if (resultTask == timeoutTask || resultTask == cancelTask) {
-                    return results.ToArray();
-                } else {
-                    // the operation failed
-                    throw tcs.Task.Exception;
-                }
-            } finally {
-                lock (_replyWaits) {
-                    _replyWaits.Remove(replyId);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Waits for an envelope to be received on the reply queue with the provided envelope id.
-        /// </summary>
-        /// <param name="replyId">The envelope id.</param>
-        /// <param name="timeout">The timeout.</param>
-        /// <param name="cancellationToken">The cancellation token.</param>
-        /// <returns></returns>
-        internal async Task<Envelope> WaitReplyAsync(Guid replyId, TimeSpan timeout, CancellationToken cancellationToken = default(CancellationToken)) {
-            // create completion source
-            TaskCompletionSource<Envelope> tcs = new TaskCompletionSource<Envelope>();
-
-            lock(_replyWaits) {
-                _replyWaits.Add(replyId, new ReplyWait() {
-                    CompletionSource = tcs
-                });
-            }
-
-            if (timeout == Timeout.InfiniteTimeSpan)
-                return await tcs.Task.ConfigureAwait(false);
-            else {
-                // create the timeout and cancellation task
-                Task timeoutTask = Task.Delay(timeout);
-                Task cancelTask = cancellationToken == CancellationToken.None ? null : Task.FromCanceled(cancellationToken);
-
-                // wait until either the operation times out, is cancelled or finishes
-                Task resultTask = cancelTask == null ? await Task.WhenAny(timeoutTask, tcs.Task).ConfigureAwait(false) :
-                    await Task.WhenAny(timeoutTask, tcs.Task, cancelTask).ConfigureAwait(false);
-
-                if (resultTask == timeoutTask)
-                    throw new TimeoutException("The operation timed out before a reply was received");
-                else if (resultTask == cancelTask)
-                    throw new TaskCanceledException("The operation was cancelled before a reply was received");
-                else {
-                    return tcs.Task.Result;
-                }
-            }
-        }
         #endregion
 
         #region Other Methods
+        /*
         /// <summary>
         /// Reconnects the underlying broker.
         /// </summary>
@@ -544,77 +359,22 @@ namespace Holon
                 Debug.WriteLine(":Reconnect -> Set broker and resumed waits");
 #endif
             }
-        }
+        }*/
 
         /// <summary>
         /// Setup the node, called internally.
         /// </summary>
         /// <returns></returns>
         internal async Task SetupAsync() {
-            // add shutdown handler
-            _broker.Shutdown += async delegate (object s, BrokerShutdownEventArgs e) {
-                Debug.WriteLine(":Reconnect -> Reconnecting");
+            // setup all namespaces
+            Task[] setupTasks = _namespaces.Select(n => n.SetupAsync()).ToArray();
 
-                try {
-                    await ReconnectAsync().ConfigureAwait(false);
-#if DEBUG
-                } catch(Exception ex) {
-                    Debug.Fail(":Reconnect -> Failed to reconnect: " + ex.Message);
-#else
-                } catch (Exception ex) {
-#endif
-                    Console.WriteLine("messaging", "failed to reconnect to broker: {0}", ex.ToString());
-                    Dispose();
-                }
-            };
-
-            // add returned handler
-            _broker.Returned += delegate (object s, BrokerReturnedEventArgs e) {
-                if (e.ID != Guid.Empty) {
-                    TaskCompletionSource<Envelope> tcs;
-
-                    lock (_replyWaits) {
-                        // try and get the reply wait
-                        if (!_replyWaits.TryGetValue(e.ID, out ReplyWait replyWait))
-                            return;
-
-                        // if this is a multi-reply do nothing
-                        if (replyWait.Results != null)
-                            return;
-
-                        // remove and set exception
-                        tcs = replyWait.CompletionSource;
-                        _replyWaits.Remove(e.ID);
-                    }
-
-                    tcs.TrySetException(new Exception("The envelope was returned before delivery"));
-                }
-            };
-
-            // create reply queue
-            try {
-                // declare queue with unique name
-                using (RandomNumberGenerator rng = RandomNumberGenerator.Create()) {
-                    // get unique string
-                    byte[] uniqueId = new byte[20];
-                    rng.GetBytes(uniqueId);
-                    string uniqueIdStr = BitConverter.ToString(uniqueId).Replace("-", "").ToLower();
-
-                    _replyQueue = await _broker.CreateQueueAsync(string.Format("~reply:{1}%{0}", _uuid, uniqueIdStr), false, true, "", "", true, true, new Dictionary<string, object>() {
-                        { "x-expires", (int)TimeSpan.FromMinutes(15).TotalMilliseconds }
-                    }).ConfigureAwait(false);
-                }
-            } catch (Exception ex) {
-                throw new InvalidOperationException("Failed to create node reply queue", ex);
-            }
+            await Task.WhenAll(setupTasks);
 
             // setup service
             if (_queryService == null) {
                 _queryService = await AttachAsync(string.Format("node:{0}", _uuid), ServiceType.Singleton, ServiceExecution.Parallel, RpcBehaviour.Bind<INodeQuery001>(new NodeQueryImpl(this))).ConfigureAwait(false);
             }
-
-            // start reply processor
-            ReplyLoop();
         }
 
         /// <summary>
@@ -625,15 +385,18 @@ namespace Holon
         /// <param name="behaviour">The service behaviour.</param>
         /// <returns>The attached service.</returns>
         public async Task<Service> AttachAsync(ServiceAddress addr, ServiceConfiguration configuration, ServiceBehaviour behaviour) {
+            // get namespace
+            Namespace @namespace = GetNamespace(addr.Namespace);
+
             // create service
-            Service service = new Service(this, _broker, addr, behaviour, configuration);
+            Service service = new Service(@namespace, addr, behaviour, configuration);
 
             if (_configuration.ThrowUnhandledExceptions) {
                 service.UnhandledException += (o, e) => throw e.Exception;
             }
 
-            // create queue
-            await service.SetupAsync().ConfigureAwait(false);
+            // setup service
+            await @namespace.SetupServiceAsync(service).ConfigureAwait(false);
 
             lock (_services) {
                 _services.Add(service);
@@ -741,60 +504,6 @@ namespace Holon
         }
 
         /// <summary>
-        /// Node worker to process reply messages.
-        /// </summary>
-        private async void ReplyLoop() {
-            while (!_disposed) {
-                // receieve broker message
-                InboundMessage msg = null;
-
-                try {
-                    msg = await _replyQueue.ReceiveAsync().ConfigureAwait(false);
-                } catch(Exception) {
-                    break;
-                }
-
-                //TODO: cancel on dispose
-                Envelope envelope = new Envelope(msg, this);
-
-                // check if we have an correlation
-                if (envelope.ID == Guid.Empty) {
-                    // trigger event
-                    OnUnroutableReply(new UnroutableReplyEventArgs(envelope));
-
-                    continue;
-                }
-
-                // get completion source for this envelope
-                ReplyWait replyWait = default(ReplyWait);
-                bool foundReplyWait = false;
-
-                lock(_replyWaits) {
-                    foundReplyWait = _replyWaits.TryGetValue(envelope.ID, out replyWait);
-                }
-
-                if (!foundReplyWait) {
-                    // log
-                    Console.WriteLine("unroutable reply: {0}", envelope.ID);
-
-                    // trigger event
-                    OnUnroutableReply(new UnroutableReplyEventArgs(envelope));
-                } else {
-                    // if it's a multi-reply add to results, if not set completion source
-                    if (replyWait.Results == null) {
-                        lock (_replyWaits) {
-                            _replyWaits.Remove(envelope.ID);
-                        }
-
-                        replyWait.CompletionSource.TrySetResult(envelope);
-                    } else {
-                        replyWait.Results.Add(envelope);
-                    }
-                }
-            }
-        }
-
-        /// <summary>
         /// Disposes the node and underlying services.
         /// </summary>
         public void Dispose() {
@@ -817,9 +526,6 @@ namespace Holon
             foreach (Service service in servicesArr) {
                 service.Dispose();
             }
-
-            // destroy reply queue
-            _replyQueue.Dispose();
 
 #if DEBUG_DISPOSE
             Debug.WriteLine("< Node::Disposed");
@@ -919,73 +625,17 @@ namespace Holon
 
         #region Event System
         /// <summary>
-        /// Declares the event, creating the namespace and storing the type for future reference.
-        /// </summary>
-        /// <param name="addr">The event address.</param>
-        /// <note>Currently the only behaviour is to declare the namespace.</note>
-        /// <returns></returns>
-        /// <exception cref="FormatException">If the event address is invalid.</exception>
-        private async Task DeclareEventAsync(EventAddress addr) {
-            // check if already declared
-            lock (_declaredEventNamespaces) {
-                if (_declaredEventNamespaces.Contains(addr.Namespace))
-                    return;
-            }
-
-            // declare exchange
-            int retries = 3;
-
-            while (retries > 0) {
-                try {
-                    await _broker.DeclareExchange(string.Format("!{0}", addr.Namespace), "topic", false, false).ConfigureAwait(false);
-                    break;
-                } catch (Exception) {
-                    retries--;
-                    await Task.Delay(1000).ConfigureAwait(false);
-                }
-            }
-
-            if (retries == 0)
-                return;
-
-            // add to list
-            lock (_declaredEventNamespaces) {
-                _declaredEventNamespaces.Add(addr.Namespace);
-            }
-        }
-        
-        /// <summary>
         /// Emits an event on the provided address.
         /// </summary>
         /// <param name="addr">The event address.</param>
         /// <param name="data">The event data.</param>
         /// <exception cref="FormatException">If the event address is invalid.</exception>
         /// <returns></returns>
-        public async Task EmitAsync(EventAddress addr, object data) {
-            // check if not declared
-            bool declared = false;
+        public Task EmitAsync(EventAddress addr, object data) {
+            // get namespace
+            Namespace @namespace = GetNamespace(addr.Namespace);
 
-            lock (_declaredEventNamespaces) {
-                 declared = _declaredEventNamespaces.Contains(addr.Namespace);
-            }
-
-            if (!declared)
-                await DeclareEventAsync(addr).ConfigureAwait(false);
-
-            // serialize data payload
-            Event e = new Event(addr.Resource, addr.Name);
-            e.Serialize(data);
-
-            // serialize
-            ProtobufEventSerializer serializer = new ProtobufEventSerializer();
-            byte[] body = serializer.SerializeEvent(e);
-
-            // send event
-            try {
-                await _broker.SendAsync(string.Format("!{0}", addr.Namespace), addr.Name, body, new Dictionary<string, object>() {
-                    { EventHeader.HEADER_NAME, new EventHeader(EventHeader.HEADER_VERSION, serializer.Name).ToString() }
-                }, null, null, false).ConfigureAwait(false);
-            } catch (Exception) { }
+            return @namespace.EmitAsync(addr, data);
         }
 
         /// <summary>
@@ -1004,23 +654,11 @@ namespace Holon
         /// </summary>
         /// <param name="addr">The event address.</param>
         /// <returns>The subscription.</returns>
-        public async Task<EventSubscription> SubscribeAsync(EventAddress addr) {
-            // create the queue
-            await _broker.DeclareExchange(string.Format("!{0}", addr.Namespace), "topic", false, false).ConfigureAwait(false);
-            BrokerQueue brokerQueue = null;
+        public Task<EventSubscription> SubscribeAsync(EventAddress addr) {
+            // get namespace
+            Namespace @namespace = GetNamespace(addr.Namespace);
 
-            // declare queue with unique name
-            using (RandomNumberGenerator rng = RandomNumberGenerator.Create()) {
-                // get unique string
-                byte[] uniqueId = new byte[20];
-                rng.GetBytes(uniqueId);
-                string uniqueIdStr = BitConverter.ToString(uniqueId).Replace("-", "").ToLower();
-
-                brokerQueue = await _broker.CreateQueueAsync(string.Format("!{0}%{1}", addr.ToString(), uniqueIdStr), false, true, string.Format("!{0}", addr.Namespace), $"{addr.Resource}.{addr.Name}", true, true).ConfigureAwait(false);
-            }
-
-            // create subscription
-            return new EventSubscription(addr, this, brokerQueue);
+            return @namespace.SubscribeAsync(addr);
         }
 
         /// <summary>
@@ -1033,33 +671,41 @@ namespace Holon
         }
         #endregion
 
-        #region Setup
+        #region Setup 
         /// <summary>
         /// Creates a new node on the provided endpoint.
         /// </summary>
-        /// <param name="endpoint">The broker endpoint.</param>
         /// <param name="configuration">The configuration.</param>
         /// <returns></returns>
-        public static async Task<Node> CreateAsync(string endpoint, NodeConfiguration configuration = default(NodeConfiguration)) {
+        public static async Task<Node> CreateAsync(NodeConfiguration configuration = default(NodeConfiguration)) {
             // fill configuration
             if (configuration == null)
                 configuration = new NodeConfiguration();
-            
-            // create broker context
-            BrokerContext ctx = await BrokerContext.CreateAsync(endpoint);
-
-            // create broker
-            Broker broker = await ctx.CreateBrokerAsync(configuration.ApplicationId);
 
             // create node
-            Node node = new Node(broker, configuration);
-            node._brokerContext = ctx;
-            node._broker = broker;
+            Node node = new Node(configuration);
 
             // setup node
             await node.SetupAsync();
 
             return node;
+        }
+
+        /// <summary>
+        /// Creates a new node on the provided endpoint.
+        /// </summary>
+        /// <param name="amqpEndpoint">The broker endpoint.</param>
+        /// <param name="configuration">The configuration.</param>
+        /// <returns></returns>
+        public static Task<Node> CreateAsync(string amqpEndpoint, NodeConfiguration configuration = default(NodeConfiguration)) {
+            // fill configuration
+            if (configuration == null)
+                configuration = new NodeConfiguration();
+
+            // add broker
+            configuration.Namespaces = configuration.Namespaces.Concat(new NamespaceEndpoint[] { new NamespaceEndpoint("*", new Uri(amqpEndpoint)) }).ToArray();
+
+            return CreateAsync(configuration);
         }
 
         /// <summary>
@@ -1072,11 +718,19 @@ namespace Holon
             string nodeUuid = Environment.GetEnvironmentVariable("NODE_UUID");
             string endpoint = Environment.GetEnvironmentVariable("BROKER_ENDPOINT");
 
+            // create configuration
+            if (configuration == null)
+                configuration = new NodeConfiguration();
+
+            // add node uuid
             if (nodeUuid != null)
                 configuration.UUID = Guid.Parse(nodeUuid);
 
-            if (endpoint == null)
-                throw new ArgumentNullException("The endpoint in environment is null");
+            // try and find broker endpoint
+            if (endpoint == null && configuration.Namespaces.Length == 0)
+                throw new ArgumentNullException("The environment does not contain any namespaces");
+            else if (endpoint != null)
+                configuration.Namespaces = configuration.Namespaces.Concat(new NamespaceEndpoint[] { new NamespaceEndpoint("*", new Uri(endpoint)) }).ToArray();
 
             return CreateAsync(endpoint, configuration);
         }
@@ -1086,19 +740,21 @@ namespace Holon
         /// <summary>
         /// Creates a new node.
         /// </summary>
-        /// <param name="broker">The broker.</param>
         /// <param name="configuration">The node configuration.</param>
-        internal Node(Broker broker, NodeConfiguration configuration) {
+        internal Node(NodeConfiguration configuration) {
             // check app id format
             if (configuration.ApplicationId.IndexOf('.') + configuration.ApplicationId.IndexOf(' ') != -2)
                 throw new FormatException("The node application id cannot contains dots or spaces");
 
             // apply private members
-            _broker = broker;
             _appId = configuration.ApplicationId.ToLower();
             _appVersion = configuration.ApplicationVersion;
             _uuid = configuration.UUID == Guid.Empty ? Guid.NewGuid() : configuration.UUID;
             _configuration = configuration;
+
+            // create namespaces
+            _namespaces = _configuration.Namespaces.Select(n => new Namespace(this, n.Name, n.ConnectionUri))
+                .ToList();
         }
         #endregion
     }

@@ -17,7 +17,7 @@ namespace Holon.Events
     public class EventSubscription : IDisposable
     {
         #region Fields
-        private Node _node;
+        private Namespace _namespace;
         private BrokerQueue _queue;
         private int _disposed;
         private EventAddress _address;
@@ -42,7 +42,7 @@ namespace Holon.Events
         /// <returns>The event.</returns>
         private Event ProcessMessage(InboundMessage message) {
             // read envelope
-            Envelope envelope = new Envelope(message, _node);
+            Envelope envelope = new Envelope(message, _namespace);
             
             // check for header
             if (!envelope.Headers.ContainsKey(EventHeader.HEADER_NAME))
@@ -182,11 +182,11 @@ namespace Holon.Events
         /// Creates a new subscription.
         /// </summary>
         /// <param name="addr">The address.</param>
-        /// <param name="node">The node.</param>
+        /// <param name="namespace">The namespace.</param>
         /// <param name="queue">The queue.</param>
-        internal EventSubscription(EventAddress addr, Node node, BrokerQueue queue) {
+        internal EventSubscription(EventAddress addr, Namespace @namespace, BrokerQueue queue) {
             _queue = queue;
-            _node = node;
+            _namespace = @namespace;
             _address = addr;
         }
         #endregion

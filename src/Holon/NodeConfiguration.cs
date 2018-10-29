@@ -1,6 +1,7 @@
 ﻿using ProtoBuf;
 using System;
 using System.Collections.Generic;
+using System.Runtime.Serialization;
 using System.Text;
 
 namespace Holon
@@ -39,6 +40,13 @@ namespace Holon
         /// <summary>
         /// Gets or sets if unhandled service exceptions should be thrown.
         /// </summary>
+        [IgnoreDataMember]
         public bool ThrowUnhandledExceptions { get; set; } = false;
+
+        /// <summary>
+        /// Gets or sets the namespace configuration.
+        /// </summary>
+        [IgnoreDataMember]
+        public NamespaceEndpoint[] Namespaces { get; set; } = new NamespaceEndpoint[0];
     }
 }

@@ -16,7 +16,7 @@ namespace Holon.Services
     public sealed class Service : IDisposable
     {
         #region Fields
-        private Node _node;
+        private Namespace _namespace;
         private ServiceAddress _addr;
         private Broker _broker;
         private BrokerQueue _queue;
@@ -115,6 +115,15 @@ namespace Holon.Services
                 return _broker;
             }
         }
+
+        /// <summary>
+        /// Gets the namespace.
+        /// </summary>
+        internal Namespace Namespace {
+            get {
+                return _namespace;
+            }
+        }
         #endregion
 
         #region Events
@@ -154,24 +163,28 @@ namespace Holon.Services
             _queue.Dispose();
 
             // detach from node
-            _node.Detach(this);
+            _namespace.Node.Detach(this);
         }
 
         /// <summary>
         /// Creates the queue and internal consumer for this service.
         /// </summary>
+        /// <param name="broker">The broker.</param>
         /// <exception cref="InvalidOperationException">If the queue already exists.</exception>
         /// <returns></returns>
-        internal async Task<BrokerQueue> SetupAsync() {
+        internal async Task<BrokerQueue> SetupAsync(Broker broker) {
             // check if queue has already been created
             if (_queue != null)
                 throw new InvalidOperationException("The broker queue has already been created");
+
+            // set broker
+            _broker = broker;
 
             // create queue
             await _broker.DeclareExchange(_addr.Namespace, "topic", true, false).ConfigureAwait(false);
 
             // check if already declared
-            if (_node.Services.Any(s => s.Type == ServiceType.Singleton && s._addr == _addr))
+            if (_namespace.Node.Services.Any(s => s.Type == ServiceType.Singleton && s._addr == _addr))
                 throw new InvalidOperationException("The service is already in use as a singleton");
 
             if (Type == ServiceType.Singleton) {
@@ -211,21 +224,6 @@ namespace Holon.Services
         /// <returns></returns>
         public Task BindAsync(string routingKey) {
             return _queue.BindAsync(_addr.Namespace, routingKey);
-        }
-
-        /// <summary>
-        /// Changes the broker then creates the queue and internal consumer for this service.
-        /// </summary>
-        /// <param name="broker"></param>
-        /// <returns></returns>
-        internal Task<BrokerQueue> ResetupAsync(Broker broker) {
-            // cancel existing loop
-            _loopCancel.Cancel();
-
-            // resetup
-            _broker = broker;
-            _queue = null;
-            return SetupAsync();
         }
 
         /// <summary>
@@ -307,7 +305,7 @@ namespace Holon.Services
                     message = await _queue.ReceiveAsync(_loopCancel.Token).ConfigureAwait(false);
 
                     // create envelope
-                    envelope = new Envelope(message, _node);
+                    envelope = new Envelope(message, _namespace);
                 } catch(OperationCanceledException) {
                     return;
                 }
@@ -356,15 +354,14 @@ namespace Holon.Services
         #endregion
 
         #region Constructors
-        internal Service(Node node, Broker broker, ServiceAddress addr, ServiceBehaviour behaviour, ServiceConfiguration configuration) {
+        internal Service(Namespace @namespace, ServiceAddress addr, ServiceBehaviour behaviour, ServiceConfiguration configuration) {
             if (configuration == null)
                 throw new ArgumentNullException(nameof(configuration));
-
-            _node = node ?? throw new ArgumentNullException(nameof(node));
-            _broker = broker ?? throw new ArgumentNullException(nameof(broker));
+            
             _behaviour = behaviour ?? throw new ArgumentNullException(nameof(behaviour));
             _addr = addr;
             _configuration = configuration;
+            _namespace = @namespace ?? throw new ArgumentNullException(nameof(@namespace));
         }
         #endregion
     }

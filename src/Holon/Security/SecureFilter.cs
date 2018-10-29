@@ -74,7 +74,7 @@ namespace Holon.Security
                         Serializer.Serialize(ms, respondCertificateMsg);
 
                         // reply
-                        await envelope.Node.ReplyAsync(envelope.ReplyTo, envelope.ID, ms.ToArray(), new Dictionary<string, object>() {
+                        await envelope.Namespace.ReplyAsync(envelope.ReplyTo, envelope.ID, ms.ToArray(), new Dictionary<string, object>() {
                             { SecureHeader.HEADER_NAME, new SecureHeader(SecureHeader.HEADER_VERSION, SecureMessageType.RespondCertificate).ToString() }
                         });
                     }
@@ -148,7 +148,7 @@ namespace Holon.Security
                     }
 
                     // reply
-                    await envelope.Node.ReplyAsync(envelope.ReplyTo, envelope.ID, respondKeyBody, new Dictionary<string, object>() {
+                    await envelope.Namespace.ReplyAsync(envelope.ReplyTo, envelope.ID, respondKeyBody, new Dictionary<string, object>() {
                         { SecureHeader.HEADER_NAME, new SecureHeader(SecureHeader.HEADER_VERSION, SecureMessageType.RespondKey).ToString() }
                     });
 
@@ -223,6 +223,20 @@ namespace Holon.Security
             } else {
                 return true;
             }
+        }
+
+        /// <summary>
+        /// Creates a new secure service filter to handle handshakes and encrypted messages.
+        /// </summary>
+        /// <param name="certificate">The certificate.</param>
+        /// <param name="secretBytes">The shared secret.</param>
+        public SecureFilter(X509Certificate2 certificate, byte[] secretBytes) {
+            // set certificate
+            _certificate = certificate;
+            _secret = secretBytes;
+
+            if (_secret.Length != 32)
+                throw new ArgumentException("The secret must be exactly 32 bytes", nameof(secretBytes));
         }
 
         /// <summary>

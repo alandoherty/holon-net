@@ -59,7 +59,7 @@ namespace Holon.Security
                 // add header
                 headers[SecureHeader.HEADER_NAME] = new SecureHeader(SecureHeader.HEADER_VERSION, SecureMessageType.RespondMessage).ToString();
 
-                return _envelope.Node.ReplyAsync(ReplyTo, ReplyID, outputStream.ToArray(), headers);
+                return _envelope.Namespace.ReplyAsync(ReplyTo, ReplyID, outputStream.ToArray(), headers);
             }
         }
 

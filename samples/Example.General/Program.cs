@@ -97,15 +97,9 @@ namespace Example.General
                 ThrowUnhandledExceptions = true
             });
 
-            var sub = await TestNode.SubscribeAsync("user:alan.*");
-
-            sub.AsObservable().Subscribe(new EventObserver());
-
-            while(true) {
-                await TestNode.EmitAsync("user:alan.test", new EventTest() {
-                    Potato = "Wow"
-                });
-            }
+            Service s = await TestNode.AttachAsync("auth:test", new ServiceConfiguration() {
+                Filters = new IServiceFilter[] { new SecureFilter(new X509Certificate2("public_privatekey.pfx"), "bacon")}
+            }, RpcBehaviour.Bind<ITest001>(new Test001()));
 
             ReadLoop(TestNode);
 
