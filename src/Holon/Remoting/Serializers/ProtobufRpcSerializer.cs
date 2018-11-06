@@ -148,7 +148,9 @@ namespace Holon.Remoting.Serializers
         /// </summary>
         /// <param name="val">The value.</param>
         public void SetData(object val) {
-            if (val is string)
+            if (val == null)
+                Data = null;
+            else if (val is string)
                 Data = Encoding.UTF8.GetBytes((string)val);
             else if (val is sbyte)
                 Data = new byte[] { (byte)(sbyte)val };
@@ -200,7 +202,9 @@ namespace Holon.Remoting.Serializers
         /// <param name="type">The type.</param>
         /// <returns></returns>
         public object GetData(Type type) {
-            if (type == typeof(string))
+            if (Data == null)
+                return null;
+            else if (type == typeof(string))
                 return Encoding.UTF8.GetString(Data);
             else if (type == typeof(sbyte))
                 return (sbyte)Data[0];
