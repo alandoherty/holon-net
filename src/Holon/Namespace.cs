@@ -152,7 +152,7 @@ namespace Holon
                         _replyWaits.Remove(e.ID);
                     }
 
-                    tcs.TrySetException(new Exception("The envelope was returned before delivery"));
+                    tcs.TrySetException(new ServiceNotFoundException("The envelope was returned before delivery"));
                 }
             };
 
