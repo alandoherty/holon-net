@@ -55,6 +55,31 @@ namespace Holon.Protocol
         /// <summary>
         /// Binds to the exchange.
         /// </summary>
+        /// <param name="exchange">The exchange.</param>
+        /// <param name="routingKey">The routing key.</param>
+        public void Bind(string exchange, string routingKey) {
+            try {
+                _broker.Context.QueueWork(delegate () {
+                    _broker.Channel.QueueBind(_queue, exchange, routingKey);
+                    return null;
+                });
+            } catch (Exception ex) {
+                throw new InvalidOperationException("Failed to bind queue to exchange", ex);
+            }
+
+            // add to exchange list
+            lock (_exchanges) {
+                if (!_exchanges.Contains(exchange))
+                    _exchanges.Add(exchange);
+            }
+        }
+
+        /// <summary>
+        /// Binds to the exchange.
+        /// </summary>
+        /// <param name="exchange">The exchange.</param>
+        /// <param name="routingKey">The routing key.</param>
+        /// <exception cref="InvalidOperationException">When binding fails.</exception>
         /// <returns></returns>
         public async Task BindAsync(string exchange, string routingKey) {
             try {
@@ -63,12 +88,6 @@ namespace Holon.Protocol
                     return null;
                 }).ConfigureAwait(false);
             } catch (Exception ex) {
-                // try and clean up the queue first
-                await _broker.Context.AskWork<QueueDeclareOk>(delegate () {
-                    return _broker.Channel.QueueDelete(_queue, true, true);
-                }).ConfigureAwait(false);
-
-                // rethrow
                 throw new InvalidOperationException("Failed to bind queue to exchange", ex);
             }
 

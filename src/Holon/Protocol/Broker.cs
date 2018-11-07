@@ -148,8 +148,8 @@ namespace Holon.Protocol
         /// <param name="durable">The durability.</param>
         /// <param name="autoDelete">If to delete when all queues leave.</param>
         /// <returns></returns>
-        public Task DeclareExchange(string exchange, string type, bool durable, bool autoDelete) {
-            return _ctx.AskWork(delegate () {
+        public void DeclareExchange(string exchange, string type, bool durable, bool autoDelete) {
+            _ctx.QueueWork(delegate () {
                 _channel.ExchangeDeclare(exchange, "topic", durable, autoDelete);
                 return null;
             });

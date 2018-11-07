@@ -104,14 +104,20 @@ namespace Example.General
 
             // attach services
             Guid[] uuids = new Guid[500];
+            List<Task> tasks = new List<Task>();
+
+            Stopwatch stopwatch = new Stopwatch();
+            stopwatch.Start();
 
             for (int i = 0; i < uuids.Length; i++) {
                 uuids[i] = Guid.NewGuid();
 
-                await TestNode.AttachAsync($"auth:{uuids[i]}", RpcBehaviour.Bind<ITest001>(new Test001(uuids[i]))).ConfigureAwait(false);
+                tasks.Add(TestNode.AttachAsync($"auth:{uuids[i]}", RpcBehaviour.Bind<ITest001>(new Test001(uuids[i]))));
             }
 
-            Console.WriteLine($"Attached {uuids.Length} services");
+            await Task.WhenAll(tasks).ConfigureAwait(false);
+
+            Console.WriteLine($"Attached {uuids.Length} services in {stopwatch.ElapsedMilliseconds}ms");
             
             int[] ctr = new int[] { 0 };
             int pavg = 0;

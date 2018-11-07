@@ -410,7 +410,7 @@ namespace Holon
 
             while (retries > 0) {
                 try {
-                    await _broker.DeclareExchange(string.Format("!{0}", addr.Namespace), "topic", false, false).ConfigureAwait(false);
+                    _broker.DeclareExchange(string.Format("!{0}", addr.Namespace), "topic", false, false);
                     break;
                 } catch (Exception) {
                     retries--;
@@ -468,7 +468,7 @@ namespace Holon
         /// <returns>The subscription.</returns>
         public async Task<EventSubscription> SubscribeAsync(EventAddress addr) {
             // create the queue
-            await _broker.DeclareExchange(string.Format("!{0}", addr.Namespace), "topic", false, false).ConfigureAwait(false);
+            _broker.DeclareExchange(string.Format("!{0}", addr.Namespace), "topic", false, false);
             BrokerQueue brokerQueue = null;
 
             // declare queue with unique name

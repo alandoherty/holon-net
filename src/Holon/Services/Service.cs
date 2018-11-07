@@ -176,7 +176,7 @@ namespace Holon.Services
             _broker = broker;
 
             // create queue
-            await _broker.DeclareExchange(_addr.Namespace, "topic", true, false).ConfigureAwait(false);
+            _broker.DeclareExchange(_addr.Namespace, "topic", true, false);
 
             // check if already declared
             if (_namespace.Node.Services.Any(s => s.Type == ServiceType.Singleton && s._addr == _addr))
@@ -219,6 +219,14 @@ namespace Holon.Services
         /// <returns></returns>
         public Task BindAsync(string routingKey) {
             return _queue.BindAsync(_addr.Namespace, routingKey);
+        }
+
+        /// <summary>
+        /// Explicitly binds this service to another routing key in the namespace. This binding will occur asyncronously in the underlying broker.
+        /// </summary>
+        /// <param name="routingKey">The routing key.</param>
+        public void Bind(string routingKey) {
+            _queue.Bind(_addr.Namespace, routingKey);
         }
 
         /// <summary>
