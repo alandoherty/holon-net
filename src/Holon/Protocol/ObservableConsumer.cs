@@ -7,18 +7,19 @@ using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using System.Threading;
 using Holon.Services;
+using System.Linq;
 
 namespace Holon.Protocol
 {
     /// <summary>
     /// Represents a basic consumer designed for use with asyncronous TPL code.
     /// </summary>
-    internal class AsyncConsumer : IBasicConsumer
+    internal class ObservableConsumer : IBasicConsumer, IObservable<InboundMessage>
     {
         #region Fields
         private IModel _channel;
         private int _cancelled;
-        private BufferBlock<InboundMessage> _mailbox = new BufferBlock<InboundMessage>();
+        private List<SubscribedObserver> _subscriptions = new List<SubscribedObserver>(1);
         #endregion
 
         /// <summary>
@@ -40,9 +41,11 @@ namespace Holon.Protocol
             if (Interlocked.CompareExchange(ref _cancelled, 1, 0) == 1)
                 return;
 
-            // empty mailbox and complete
-            _mailbox.TryReceiveAll(out IList<InboundMessage> messages);
-            _mailbox.Complete();
+            // call completed on all observers
+            lock (_subscriptions) {
+                foreach (SubscribedObserver observer in _subscriptions)
+                    observer.Observer.OnCompleted();
+            }
 
             // call event
             ConsumerCancelled?.Invoke(sender, e);
@@ -84,7 +87,10 @@ namespace Holon.Protocol
         /// <param name="properties">The properties.</param>
         /// <param name="body">The body.</param>
         public void HandleBasicDeliver(string consumerTag, ulong deliveryTag, bool redelivered, string exchange, string routingKey, IBasicProperties properties, byte[] body) {
-            _mailbox.Post(new InboundMessage(_channel, deliveryTag, redelivered, exchange, routingKey, properties, body));
+            lock(_subscriptions) {
+                foreach (SubscribedObserver observer in _subscriptions)
+                    observer.Observer.OnNext(new InboundMessage(_channel, deliveryTag, redelivered, exchange, routingKey, properties, body));
+            }
         }
 
         /// <summary>
@@ -96,56 +102,78 @@ namespace Holon.Protocol
         }
 
         /// <summary>
-        /// Receives a message asyncronously from the consumer.
+        /// Subscribes to this consumer.
         /// </summary>
-        /// <returns>The broker message.</returns>
-        public Task<InboundMessage> ReceiveAsync() {
-            return _mailbox.ReceiveAsync();
-        }
-
-        /// <summary>
-        /// Receives a message asyncronously from the consumer within the timeout.
-        /// </summary>
-        /// <param name="timeout">The timeout.</param>
-        /// <returns>The broker message.</returns>
-        public Task<InboundMessage> ReceiveAsync(TimeSpan timeout) {
-            return _mailbox.ReceiveAsync(timeout);
-        }
-
-        /// <summary>
-        /// Receives a message asyncronously from the consumer.
-        /// </summary>
-        /// <param name="cancellationToken">The cancellation token.</param>
-        /// <returns>The broker message.</returns>
-        public Task<InboundMessage> ReceiveAsync(CancellationToken cancellationToken) {
-            return _mailbox.ReceiveAsync(cancellationToken);
-        }
-
-        /// <summary>
-        /// Receives a message asyncronously from the consumer.
-        /// </summary>
-        /// <param name="timeout">The timeout.</param>
-        /// <param name="cancellationToken">The cancellation token.</param>
-        /// <returns>The broker message.</returns>
-        public Task<InboundMessage> ReceiveAsync(TimeSpan timeout, CancellationToken cancellationToken) {
-            return _mailbox.ReceiveAsync(timeout, cancellationToken);
-        }
-
-        /// <summary>
-        /// Creates an observable for this consumer.
-        /// </summary>
+        /// <param name="observer">The observer.</param>
         /// <returns></returns>
-        public IObservable<InboundMessage> AsObservable() {
-            return _mailbox.AsObservable();
+        public IDisposable Subscribe(IObserver<InboundMessage> observer) {
+            lock (_subscriptions) {
+                // find the next identification
+                int nextId = -1;
+
+                for (int i = 0; i < int.MaxValue; i++) {
+                    if (_subscriptions.Any(s => s.ID == i))
+                        continue;
+
+                    nextId = i;
+                    break;
+                }
+
+                // check we got an ID, essentially impossible not to though
+                if (nextId == -1)
+                    throw new OutOfMemoryException("No more slots available for subscribers");
+
+                // add subscription
+                SubscribedObserver subscription = new SubscribedObserver() {
+                    ID = nextId,
+                    Consumer = this,
+                    Observer = observer
+                };
+
+                _subscriptions.Add(subscription);
+
+                // return our disposer
+                return new SubscribedObserverDisposer(this, subscription.ID);
+            }
+        }
+        #endregion
+
+        #region Structures
+        struct SubscribedObserverDisposer : IDisposable
+        {
+            public int ID { get; set; }
+            public ObservableConsumer Consumer { get; set; }
+
+            /// <summary>
+            /// Disposes of the subscribed observer.
+            /// </summary>
+            public void Dispose() {
+                lock (Consumer._subscriptions) {
+                    int thisId = ID;
+                    Consumer._subscriptions.RemoveAll(o => o.ID == thisId);
+                }
+            }
+
+            public SubscribedObserverDisposer(ObservableConsumer consumer, int id) {
+                ID = id;
+                Consumer = consumer;
+            }
+        }
+
+        struct SubscribedObserver
+        {
+            public int ID { get; set; }
+            public IObserver<InboundMessage> Observer { get; set; }
+            public ObservableConsumer Consumer { get; set; }
         }
         #endregion
 
         #region Constructors
         /// <summary>
-        /// Creates a new async consumer.
+        /// Creates a new observable consumer.
         /// </summary>
         /// <param name="channel">The channel.</param>
-        public AsyncConsumer(IModel channel) {
+        public ObservableConsumer(IModel channel) {
             _channel = channel;
         }
         #endregion

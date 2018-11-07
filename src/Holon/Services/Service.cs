@@ -13,7 +13,7 @@ namespace Holon.Services
     /// <summary>
     /// Represents an service.
     /// </summary>
-    public sealed class Service : IDisposable
+    public sealed class Service : IDisposable, IObserver<InboundMessage>
     {
         #region Fields
         private Namespace _namespace;
@@ -21,7 +21,6 @@ namespace Holon.Services
         private Broker _broker;
         private BrokerQueue _queue;
         private ServiceBehaviour _behaviour;
-        private CancellationTokenSource _loopCancel;
         private ServiceConfiguration _configuration;
 
         private DateTimeOffset _timeSetup;
@@ -154,10 +153,6 @@ namespace Holon.Services
             if (Interlocked.CompareExchange(ref _disposed, 1, 0) == 1)
                 return;
 
-            // cancel loop
-            if (_loopCancel != null)
-                _loopCancel.Cancel();
-
             // dispose of queue
             _queue.Unbind(_addr.Namespace, _addr.RoutingKey);
             _queue.Dispose();
@@ -208,8 +203,8 @@ namespace Holon.Services
             // setup semaphore
             _concurrencySlim = new SemaphoreSlim(_configuration.MaxConcurrency, _configuration.MaxConcurrency);
 
-            // begin loop
-            ServiceLoop();
+            // begin observing
+            _queue.AsObservable().Subscribe(this);
 
             // set uptime
             _timeSetup = DateTimeOffset.UtcNow;
@@ -283,73 +278,58 @@ namespace Holon.Services
             await _behaviour.HandleAsync(envelope).ConfigureAwait(false);
         }
 
-        /// <summary>
-        /// Service worker to receive messages from queue and hand to behaviour.
-        /// </summary>
-        private async void ServiceLoop() {
-            // assert loop not running
-            Debug.Assert(_loopCancel == null, "ServiceLoop already running");
+        void IObserver<InboundMessage>.OnCompleted() {
+            throw new NotImplementedException();
+        }
 
-            // create cancellation token
-            _loopCancel = new CancellationTokenSource();
+        void IObserver<InboundMessage>.OnError(Exception error) {
+            throw new NotImplementedException();
+        }
 
-            while (true) {
-                Envelope envelope = null;
-                InboundMessage message = null;
+        async void IObserver<InboundMessage>.OnNext(InboundMessage message) {
+            Envelope envelope = new Envelope(message, _namespace);
 
-                try {
-                    // wait for a free request slot, this ensures ServiceConfiguration.MaxConcurrency is kept to
-                    await _concurrencySlim.WaitAsync(_loopCancel.Token);
+            // wait for a free request slot, this ensures ServiceConfiguration.MaxConcurrency is kept to
+            await _concurrencySlim.WaitAsync().ConfigureAwait(false);
 
-                    // receive a single message
-                    message = await _queue.ReceiveAsync(_loopCancel.Token).ConfigureAwait(false);
+            // handle
+            try {
+                if (Execution == ServiceExecution.Serial) {
+                    // increment pending metric
+                    Interlocked.Increment(ref _requestsPending);
 
-                    // create envelope
-                    envelope = new Envelope(message, _namespace);
-                } catch(OperationCanceledException) {
-                    return;
-                }
+                    // handle the operaration
+                    await ServiceHandleAsync(envelope).ConfigureAwait(false);
 
-                // handle
-                try {
-                    if (Execution == ServiceExecution.Serial) {
-                        // increment pending metric
-                        Interlocked.Increment(ref _requestsPending);
-
-                        // handle the operaration
-                        await ServiceHandleAsync(envelope).ConfigureAwait(false);
-
-                        // release semaphore
-                        try {
-                            _concurrencySlim.Release();
-                        } catch (Exception) { }
-
-                        // decrement pending metric and increment completed
-                        Interlocked.Decrement(ref _requestsPending);
-                        Interlocked.Increment(ref _requestsCompleted);
-                    } else {
-                        ServiceHandle(envelope);
-                        continue;
-                    }
-                } catch(Exception ex) {
                     // release semaphore
-                    _concurrencySlim.Release();
+                    try {
+                        _concurrencySlim.Release();
+                    } catch (Exception) { }
 
-                    // increment faulted metric
-                    Interlocked.Increment(ref _requestsFaulted);
-                    // decrement pending metric
+                    // decrement pending metric and increment completed
                     Interlocked.Decrement(ref _requestsPending);
-
-                    // call exception handler
-                    OnUnhandledException(new ServiceExceptionEventArgs(_behaviour, ex));
+                    Interlocked.Increment(ref _requestsCompleted);
+                } else {
+                    ServiceHandle(envelope);
                 }
+            } catch (Exception ex) {
+                // release semaphore
+                _concurrencySlim.Release();
 
-                // acknowledge
-                _broker.Context.QueueWork(() => {
-                    _broker.Channel.BasicAck(envelope.Message.DeliveryTag, false);
-                    return null;
-                });
+                // increment faulted metric
+                Interlocked.Increment(ref _requestsFaulted);
+                // decrement pending metric
+                Interlocked.Decrement(ref _requestsPending);
+
+                // call exception handler
+                OnUnhandledException(new ServiceExceptionEventArgs(_behaviour, ex));
             }
+
+            // acknowledge
+            _broker.Context.QueueWork(() => {
+                _broker.Channel.BasicAck(envelope.Message.DeliveryTag, false);
+                return null;
+            });
         }
         #endregion
 

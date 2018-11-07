@@ -174,7 +174,7 @@ namespace Holon.Protocol
             }).ConfigureAwait(false);
 
             // create consumer
-            AsyncConsumer consumer = new AsyncConsumer(_channel);
+            ObservableConsumer consumer = new ObservableConsumer(_channel);
 
             // consume queue
             string consumerTag = null;

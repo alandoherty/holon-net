@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
@@ -35,13 +36,16 @@ namespace Example.General
 
     class Test001 : ITest001
     {
-        static int si = 0;
-        int i = Interlocked.Increment(ref si);
+        private Guid _uuid;
 
         public async Task<string> Login(LoginRequestMsg login) {
-            Console.WriteLine($"Worker Waiting {i} - Username: {login.Username} Password: {login.Password}");
+            //Console.WriteLine($"Worker ({_uuid}) - Username: {login.Username} Password: {login.Password}");
+            
+            return "Wow";
+        }
 
-            return null;
+        public Test001(Guid uuid) {
+            _uuid = uuid;
         }
     }
 
@@ -51,25 +55,26 @@ namespace Example.General
 
         static void Main(string[] args) => AsyncMain(args).Wait();
 
-        public static async void ReadLoop(Node node) {
-            ITest001 proxy = node.SecureProxy<ITest001>("auth:test", new SecureChannelConfiguration() {
-                ValidateAuthority = false,
-                ValidateAddress = false
-            });
+        public static async void ReadLoop(int[] ctr, Node node, Guid[] uuids) {
+            Random rand = new Random();
 
             while (true) {
                 try {
+                    int i = rand.Next(0, uuids.Length);
+                    Guid uuid = uuids[i];
+                    ITest001 proxy = node.Proxy<ITest001>($"auth:{uuid}");
+
                     string s = await proxy.Login(new LoginRequestMsg() {
                         Password = "wow",
                         Username = "alan"
-                    });
+                    }).ConfigureAwait(false);
 
-                    Console.WriteLine($"String: {s}");
+                    Interlocked.Increment(ref ctr[0]);
+
+                    //Console.WriteLine($"String: {s}");
                 } catch(Exception ex) {
                     Console.WriteLine(ex.ToString());
                 }
-
-                await Task.Delay(3000);
             }
         }
 
@@ -97,11 +102,32 @@ namespace Example.General
                 ThrowUnhandledExceptions = true
             });
 
-            Service s = await TestNode.AttachAsync("auth:test", new ServiceConfiguration() {
-                Filters = new IServiceFilter[] { new SecureFilter(new X509Certificate2("public_privatekey.pfx"), "bacon")}
-            }, RpcBehaviour.Bind<ITest001>(new Test001()));
+            // attach services
+            Guid[] uuids = new Guid[500];
 
-            ReadLoop(TestNode);
+            for (int i = 0; i < uuids.Length; i++) {
+                uuids[i] = Guid.NewGuid();
+
+                await TestNode.AttachAsync($"auth:{uuids[i]}", RpcBehaviour.Bind<ITest001>(new Test001(uuids[i]))).ConfigureAwait(false);
+            }
+
+            Console.WriteLine($"Attached {uuids.Length} services");
+            
+            int[] ctr = new int[] { 0 };
+            int pavg = 0;
+
+            for (int i = 0; i < 32; i++)
+                ReadLoop(ctr, TestNode, uuids);
+
+            while(true) {
+                Console.WriteLine($"Logging in at {ctr[0]}/s avg ({pavg}/s), ({Process.GetCurrentProcess().Threads.Count} threads)");
+
+                pavg += ctr[0];
+                pavg = pavg / 2;
+                ctr[0] = 0;
+
+                await Task.Delay(1000).ConfigureAwait(false);
+            }
 
             await Task.Delay(50000);
         }

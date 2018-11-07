@@ -33,6 +33,7 @@ namespace Holon
         private Dictionary<Guid, ReplyWait> _replyWaits = new Dictionary<Guid, ReplyWait>();
 
         private Node _node;
+        private Task _replyProcessor;
         
         private List<string> _declaredEventNamespaces = new List<string>();
         #endregion
@@ -165,16 +166,17 @@ namespace Holon
                     rng.GetBytes(uniqueId);
                     string uniqueIdStr = BitConverter.ToString(uniqueId).Replace("-", "").ToLower();
 
+                    // add the reply queue
                     _replyQueue = await _broker.CreateQueueAsync(string.Format("~reply:{1}%{0}", _node.UUID, uniqueIdStr), false, true, "", "", true, true, new Dictionary<string, object>() {
                         { "x-expires", (int)TimeSpan.FromMinutes(15).TotalMilliseconds }
                     }).ConfigureAwait(false);
+
+                    // subscribe to reply queue
+                    _replyQueue.AsObservable().Subscribe(new ReplyObserver(this));
                 }
             } catch (Exception ex) {
                 throw new InvalidOperationException("Failed to create node reply queue", ex);
             }
-
-            // start reply processor
-            ReplyLoop();
         }
 
         /// <summary>
@@ -257,53 +259,43 @@ namespace Holon
         /// <summary>
         /// Node worker to process reply messages.
         /// </summary>
-        private async void ReplyLoop() {
-            while (_disposed == 0) {
-                // receieve broker message
-                InboundMessage msg = null;
+        /// <param name="msg">The inbound message.</param>
+        private void ReplyProcess(InboundMessage msg) {
+            //TODO: cancel on dispose
+            Envelope envelope = new Envelope(msg, this);
 
-                try {
-                    msg = await _replyQueue.ReceiveAsync().ConfigureAwait(false);
-                } catch (Exception) {
-                    break;
-                }
+            // check if we have an correlation
+            if (envelope.ID == Guid.Empty) {
+                // trigger event
+                _node.OnUnroutableReply(new UnroutableReplyEventArgs(envelope));
 
-                //TODO: cancel on dispose
-                Envelope envelope = new Envelope(msg, this);
+                return;
+            }
 
-                // check if we have an correlation
-                if (envelope.ID == Guid.Empty) {
-                    // trigger event
-                    _node.OnUnroutableReply(new UnroutableReplyEventArgs(envelope));
+            // get completion source for this envelope
+            ReplyWait replyWait = default(ReplyWait);
+            bool foundReplyWait = false;
 
-                    continue;
-                }
+            lock (_replyWaits) {
+                foundReplyWait = _replyWaits.TryGetValue(envelope.ID, out replyWait);
+            }
 
-                // get completion source for this envelope
-                ReplyWait replyWait = default(ReplyWait);
-                bool foundReplyWait = false;
+            if (!foundReplyWait) {
+                // log
+                Console.WriteLine("unroutable reply: {0}", envelope.ID);
 
-                lock (_replyWaits) {
-                    foundReplyWait = _replyWaits.TryGetValue(envelope.ID, out replyWait);
-                }
-
-                if (!foundReplyWait) {
-                    // log
-                    Console.WriteLine("unroutable reply: {0}", envelope.ID);
-
-                    // trigger event
-                    _node.OnUnroutableReply(new UnroutableReplyEventArgs(envelope));
-                } else {
-                    // if it's a multi-reply add to results, if not set completion source
-                    if (replyWait.Results == null) {
-                        lock (_replyWaits) {
-                            _replyWaits.Remove(envelope.ID);
-                        }
-
-                        replyWait.CompletionSource.TrySetResult(envelope);
-                    } else {
-                        replyWait.Results.Add(envelope);
+                // trigger event
+                _node.OnUnroutableReply(new UnroutableReplyEventArgs(envelope));
+            } else {
+                // if it's a multi-reply add to results, if not set completion source
+                if (replyWait.Results == null) {
+                    lock (_replyWaits) {
+                        _replyWaits.Remove(envelope.ID);
                     }
+
+                    replyWait.CompletionSource.TrySetResult(envelope);
+                } else {
+                    replyWait.Results.Add(envelope);
                 }
             }
         }
@@ -493,6 +485,29 @@ namespace Holon
             return new EventSubscription(addr, this, brokerQueue);
         }
         #endregion
+
+        class ReplyObserver : IObserver<InboundMessage>
+        {
+            public Namespace Namespace { get; set; }
+                
+            public void OnCompleted() {
+            }
+
+            public void OnError(Exception error) {
+            }
+
+            public void OnNext(InboundMessage msg) {
+                Namespace.ReplyProcess(msg);
+            }
+
+            /// <summary>
+            /// Creates a new reply observer for the provided namespace.
+            /// </summary>
+            /// <param name="namespace">The namespace.</param>
+            public ReplyObserver(Namespace @namespace) {
+                Namespace = @namespace;
+            }
+        }
 
         #region Constructors
         /// <summary>

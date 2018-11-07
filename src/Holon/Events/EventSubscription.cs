@@ -74,50 +74,6 @@ namespace Holon.Events
         public IObservable<Event> AsObservable() {
             return new EventObservable(this);
         }
-
-        /// <summary>
-        /// Receives an event asyncronously.
-        /// </summary>
-        /// <returns>The event.</returns>
-        public async Task<Event> ReceiveAsync() {
-            while (true) {
-                InboundMessage message = await _queue.ReceiveAsync();
-
-                try {
-                    return ProcessMessage(message);
-                } catch (Exception) { }
-            }
-        }
-
-        /// <summary>
-        /// Receives an event asyncronously.
-        /// </summary>
-        /// <param name="cancellationToken">The cancellation token.</param>
-        /// <returns>The event.</returns>
-        public async Task<Event> ReceiveAsync(CancellationToken cancellationToken) {
-            while (true) {
-                InboundMessage message = await _queue.ReceiveAsync(cancellationToken);
-
-                try {
-                    return ProcessMessage(message);
-                } catch (Exception) { }
-            }
-        }
-
-        /// <summary>
-        /// Receives an event asyncronously.
-        /// </summary>
-        /// <param name="timeout">The timeout.</param>
-        /// <returns>The event.</returns>
-        public async Task<Event> ReceiveAsync(TimeSpan timeout) {
-            while (true) {
-                InboundMessage message = await _queue.ReceiveAsync(timeout);
-
-                try {
-                    return ProcessMessage(message);
-                } catch (Exception) { }
-            }
-        }
         
         /// <summary>
         /// Disposes the underlying queue.

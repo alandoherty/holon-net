@@ -15,7 +15,7 @@ namespace Holon.Protocol
         #region Fields
         private string _queue;
         private Broker _broker;
-        private AsyncConsumer _consumer;
+        private ObservableConsumer _consumer;
         private string _consumerTag;
         private List<string> _exchanges = new List<string>();
 
@@ -49,7 +49,7 @@ namespace Holon.Protocol
         /// </summary>
         /// <returns></returns>
         public IObservable<InboundMessage> AsObservable() {
-            return _consumer.AsObservable();
+            return _consumer;
         }
 
         /// <summary>
@@ -92,32 +92,6 @@ namespace Holon.Protocol
         }
 
         /// <summary>
-        /// Receives a message asyncronously.
-        /// </summary>
-        /// <returns>The message.</returns>
-        public Task<InboundMessage> ReceiveAsync() {
-            return ReceiveAsync(CancellationToken.None);
-        }
-
-        /// <summary>
-        /// Receives a message asyncronously.
-        /// </summary>
-        /// <param name="cancellationToken">The cancellation token.</param>
-        /// <returns></returns>
-        public async Task<InboundMessage> ReceiveAsync(CancellationToken cancellationToken) {
-            return await _consumer.ReceiveAsync(cancellationToken).ConfigureAwait(false);
-        }
-
-        /// <summary>
-        /// Receives a message asyncronously.
-        /// </summary>
-        /// <param name="timeout">The timeout.</param>
-        /// <returns></returns>
-        public async Task<InboundMessage> ReceiveAsync(TimeSpan timeout) {
-            return await _consumer.ReceiveAsync(timeout).ConfigureAwait(false);
-        }
-
-        /// <summary>
         /// Disposes 
         /// </summary>
         public void Dispose() {
@@ -143,7 +117,7 @@ namespace Holon.Protocol
         /// <param name="queue">The queue name.</param>
         /// <param name="consumerTag">The consumer tag.</param>
         /// <param name="consumer">The consumer.</param>
-        internal BrokerQueue(Broker broker, string queue, string consumerTag, AsyncConsumer consumer) {
+        internal BrokerQueue(Broker broker, string queue, string consumerTag, ObservableConsumer consumer) {
             _broker = broker;
             _queue = queue;
             _consumer = consumer;
