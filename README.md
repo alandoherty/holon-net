@@ -113,6 +113,16 @@ class Client {
 }
 ```
 
+## Licenses
+
+| Package | License |
+|---------|---------|
+| Newtonsoft.Json | [MIT](https://github.com/rabbitmq/rabbitmq-dotnet-client/blob/master/LICENSE) |
+| PeNet.Asn1 | [MIT](https://github.com/secana/PeNet.Asn1/blob/master/LICENCE) |
+| protobuf-net | [Apache 2.0](https://github.com/mgravell/protobuf-net/blob/master/Licence.txt) |
+| RabbitMQ.Client | [Apache 2.0 & MPL 1.1](https://github.com/rabbitmq/rabbitmq-dotnet-client/blob/master/LICENSE) |
+| .NET Core | [MIT](https://github.com/dotnet/corefx/blob/master/LICENSE.TXT) |
+
 ## Contributing
 
 Any pull requests or bug reports are welcome, please try and keep to the existing style conventions and comment any additions.
