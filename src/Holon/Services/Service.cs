@@ -317,10 +317,9 @@ namespace Holon.Services
                     // decrement pending metric and increment completed
                     Interlocked.Decrement(ref _requestsPending);
                     Interlocked.Increment(ref _requestsCompleted);
-
-                    return;
                 } else {
                     ServiceHandle(envelope);
+                    return;
                 }
             } catch (Exception ex) {
                 // release semaphore
