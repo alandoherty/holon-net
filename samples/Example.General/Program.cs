@@ -55,29 +55,6 @@ namespace Example.General
 
         static void Main(string[] args) => AsyncMain(args).Wait();
 
-        public static async void ReadLoop(int[] ctr, Node node, Guid[] uuids) {
-            Random rand = new Random();
-
-            while (true) {
-                try {
-                    int i = rand.Next(0, uuids.Length);
-                    Guid uuid = uuids[i];
-                    ITest001 proxy = node.Proxy<ITest001>($"auth:{uuid}");
-
-                    string s = await proxy.Login(new LoginRequestMsg() {
-                        Password = "wow",
-                        Username = "alan"
-                    }).ConfigureAwait(false);
-
-                    Interlocked.Increment(ref ctr[0]);
-
-                    //Console.WriteLine($"String: {s}");
-                } catch(Exception ex) {
-                    Console.WriteLine(ex.ToString());
-                }
-            }
-        }
-
         class EventTest
         {
             public string Potato { get; set; }
@@ -102,37 +79,18 @@ namespace Example.General
                 ThrowUnhandledExceptions = true
             });
 
-            // attach services
-            Guid[] uuids = new Guid[500];
-            List<Task> tasks = new List<Task>();
+            // subscribe
+            Guid g = Guid.NewGuid();
+            EventSubscription subscription = await TestNode.SubscribeAsync($"device:{g}.*");
 
-            Stopwatch stopwatch = new Stopwatch();
-            stopwatch.Start();
 
-            for (int i = 0; i < uuids.Length; i++) {
-                uuids[i] = Guid.NewGuid();
+            subscription.AsObservable().Subscribe(new EventObserver());
 
-                tasks.Add(TestNode.AttachAsync($"auth:{uuids[i]}", RpcBehaviour.Bind<ITest001>(new Test001(uuids[i]))));
-            }
-
-            await Task.WhenAll(tasks).ConfigureAwait(false);
-
-            Console.WriteLine($"Attached {uuids.Length} services in {stopwatch.ElapsedMilliseconds}ms");
-            
-            int[] ctr = new int[] { 0 };
-            int pavg = 0;
-
-            for (int i = 0; i < 32; i++)
-                ReadLoop(ctr, TestNode, uuids);
-
-            while(true) {
-                Console.WriteLine($"Logging in at {ctr[0]}/s avg ({pavg}/s), ({Process.GetCurrentProcess().Threads.Count} threads)");
-
-                pavg += ctr[0];
-                pavg = pavg / 2;
-                ctr[0] = 0;
-
-                await Task.Delay(1000).ConfigureAwait(false);
+            while (true) {
+                await TestNode.EmitAsync($"device:{g}.test", new EventTest() {
+                    Potato = "wow"
+                });
+                await Task.Delay(500);
             }
 
             await Task.Delay(50000);

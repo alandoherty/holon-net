@@ -455,7 +455,7 @@ namespace Holon
 
             // send event
             try {
-                await _broker.SendAsync(string.Format("!{0}", addr.Namespace), addr.Name, body, new Dictionary<string, object>() {
+                await _broker.SendAsync(string.Format("!{0}", addr.Namespace), $"{addr.Resource}.{addr.Name}", body, new Dictionary<string, object>() {
                     { EventHeader.HEADER_NAME, new EventHeader(EventHeader.HEADER_VERSION, serializer.Name).ToString() }
                 }, null, null, false).ConfigureAwait(false);
             } catch (Exception) { }
