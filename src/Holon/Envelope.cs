@@ -8,6 +8,7 @@ using Holon.Services;
 using ProtoBuf;
 using Holon.Protocol;
 using System.Threading.Tasks;
+using Holon.Metrics.Tracing;
 
 namespace Holon
 {
@@ -90,6 +91,18 @@ namespace Holon
                         return Guid.Empty;
                 } else
                     return Guid.Empty;
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the trace id.
+        /// </summary>
+        public string TraceId {
+            get {
+                if (Headers.TryGetValue(TraceHeader.HeaderName, out object traceId))
+                    return Encoding.UTF8.GetString(traceId as byte[]);
+                else
+                    return null;
             }
         }
 

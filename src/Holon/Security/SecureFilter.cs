@@ -30,7 +30,7 @@ namespace Holon.Security
 
                 // reply
                 await envelope.ReplyAsync(ms.ToArray(), new Dictionary<string, object>() {
-                    {SecureHeader.HEADER_NAME, new SecureHeader(SecureHeader.HEADER_VERSION, SecureMessageType.Error).ToString() }
+                    {SecureHeader.HeaderName, new SecureHeader(SecureHeader.HeaderVersion, SecureMessageType.Error).ToString() }
                 });
             }
         }
@@ -45,8 +45,8 @@ namespace Holon.Security
             SecureHeader secureHeader = null;
 
             try {
-                if (envelope.Headers.ContainsKey(SecureHeader.HEADER_NAME))
-                    secureHeader = new SecureHeader(Encoding.UTF8.GetString(envelope.Headers[SecureHeader.HEADER_NAME] as byte[]));
+                if (envelope.Headers.ContainsKey(SecureHeader.HeaderName))
+                    secureHeader = new SecureHeader(Encoding.UTF8.GetString(envelope.Headers[SecureHeader.HeaderName] as byte[]));
             } catch (Exception) {
                 if (envelope.ID != Guid.Empty) {
                     await ReplyErrorAsync(envelope, new SecureErrorMsg() {
@@ -75,7 +75,7 @@ namespace Holon.Security
 
                         // reply
                         await envelope.Namespace.ReplyAsync(envelope.ReplyTo, envelope.ID, ms.ToArray(), new Dictionary<string, object>() {
-                            { SecureHeader.HEADER_NAME, new SecureHeader(SecureHeader.HEADER_VERSION, SecureMessageType.RespondCertificate).ToString() }
+                            { SecureHeader.HeaderName, new SecureHeader(SecureHeader.HeaderVersion, SecureMessageType.RespondCertificate).ToString() }
                         });
                     }
 
@@ -149,7 +149,7 @@ namespace Holon.Security
 
                     // reply
                     await envelope.Namespace.ReplyAsync(envelope.ReplyTo, envelope.ID, respondKeyBody, new Dictionary<string, object>() {
-                        { SecureHeader.HEADER_NAME, new SecureHeader(SecureHeader.HEADER_VERSION, SecureMessageType.RespondKey).ToString() }
+                        { SecureHeader.HeaderName, new SecureHeader(SecureHeader.HeaderVersion, SecureMessageType.RespondKey).ToString() }
                     });
 
                     return false;

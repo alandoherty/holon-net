@@ -10,8 +10,8 @@ namespace Holon.Security
     internal sealed class SecureHeader
     {
         #region Constants
-        internal const string HEADER_NAME = "X-SecureService";
-        internal const string HEADER_VERSION = "1.0";
+        internal const string HeaderName = "X-SecureService";
+        internal const string HeaderVersion = "1.0";
         #endregion
 
         #region Fields

@@ -13,5 +13,10 @@ namespace Holon.Remoting
         /// Gets or sets the timeout.
         /// </summary>
         public TimeSpan Timeout { get; set; } = TimeSpan.FromSeconds(60);
+
+        /// <summary>
+        /// Gets or sets the trace ID.
+        /// </summary>
+        public string TraceId { get; set; } = null;
     }
 }

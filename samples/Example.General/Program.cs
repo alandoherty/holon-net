@@ -39,8 +39,9 @@ namespace Example.General
         private Guid _uuid;
 
         public async Task<string> Login(LoginRequestMsg login) {
-            //Console.WriteLine($"Worker ({_uuid}) - Username: {login.Username} Password: {login.Password}");
-            
+            Console.WriteLine($"Worker ({_uuid}) - Username: {login.Username} Password: {login.Password}");
+            RpcContext context = RpcContext.Current;
+
             return "Wow";
         }
 
@@ -59,39 +60,26 @@ namespace Example.General
         {
             public string Potato { get; set; }
         }
-
-        class EventObserver : IObserver<Event>
-        { 
-            public void OnCompleted() {
-            }
-
-            public void OnError(Exception error) {
-            }
-
-            public void OnNext(Event value) {
-                Console.WriteLine(value.Data.Length);
-            }
-        }
-
         static async Task AsyncMain(string[] args) {
             // attach node
             TestNode = await Node.CreateFromEnvironmentAsync(new NodeConfiguration() {
                 ThrowUnhandledExceptions = true
             });
 
-            // subscribe
-            Guid g = Guid.NewGuid();
-            EventSubscription subscription = await TestNode.SubscribeAsync($"device:{g}.*");
+            TestNode.TraceBegin += (o, e) => Console.WriteLine($"Begin trace {e.TraceId} for {e.Envelope.ID} at {DateTime.UtcNow}");
+            TestNode.TraceEnd += (o, e) => Console.WriteLine($"End trace {e.TraceId} for {e.Envelope.ID} at {DateTime.UtcNow}");
 
+            // attach
+            await TestNode.AttachAsync("auth:login", RpcBehaviour.Bind<ITest001>(new Test001(Guid.NewGuid())));
 
-            subscription.AsObservable().Subscribe(new EventObserver());
+            ITest001 proxy = TestNode.Proxy<ITest001>("auth:login", new ProxyConfiguration() {
+                TraceId = Guid.NewGuid().ToString()
+            });
 
-            while (true) {
-                await TestNode.EmitAsync($"device:{g}.test", new EventTest() {
-                    Potato = "wow"
-                });
-                await Task.Delay(500);
-            }
+            await proxy.Login(new LoginRequestMsg() {
+                Password = "password",
+                Username = "username"
+            });
 
             await Task.Delay(50000);
         }

@@ -1,4 +1,5 @@
-﻿using Holon.Protocol;
+﻿using Holon.Metrics.Tracing;
+using Holon.Protocol;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -282,8 +283,14 @@ namespace Holon.Services
                 }
             }
 
+            // trace begin
+            _namespace.Node.OnTraceBegin(new TraceEventArgs(envelope, _behaviour));
+
             // actually run handler
             await _behaviour.HandleAsync(envelope).ConfigureAwait(false);
+
+            // trace end
+            _namespace.Node.OnTraceEnd(new TraceEventArgs(envelope, _behaviour));
         }
 
         void IObserver<InboundMessage>.OnCompleted() {

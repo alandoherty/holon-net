@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using Holon.Events;
 using Holon.Events.Serializers;
 using Holon.Metrics;
+using Holon.Metrics.Tracing;
 using Holon.Protocol;
 using Holon.Remoting;
 using Holon.Remoting.Introspection;
@@ -30,7 +31,6 @@ namespace Holon
         private Guid _uuid;
 
         private NodeConfiguration _configuration;
-        private TaskCompletionSource<Broker> _brokerWait;
 
         private bool _disposed;
         private string _appId;
@@ -54,10 +54,34 @@ namespace Holon
         public event EventHandler<UnroutableReplyEventArgs> UnroutableReply;
 
         /// <summary>
+        /// Called when a trace begins.
+        /// </summary>
+        public event EventHandler<TraceEventArgs> TraceBegin;
+        
+        /// <summary>
+        /// Called when a trace ends.
+        /// </summary>
+        public event EventHandler<TraceEventArgs> TraceEnd;
+
+        /// <summary>
         /// </summary>
         /// <param name="e">The event arguments.</param>
         internal void OnUnroutableReply(UnroutableReplyEventArgs e) {
             UnroutableReply?.Invoke(this, e);
+        }
+        
+        /// <summary>
+        /// </summary>
+        /// <param name="e">The event arguments.</param>
+        internal void OnTraceBegin(TraceEventArgs e) {
+            TraceBegin?.Invoke(this, e);
+        }
+
+        /// <summary>
+        /// </summary>
+        /// <param name="e">The event arguments.</param>
+        internal void OnTraceEnd(TraceEventArgs e) {
+            TraceEnd?.Invoke(this, e);
         }
         #endregion
 
@@ -246,6 +270,20 @@ namespace Holon
         /// <summary>
         /// Sends the message to the provided service address and waits for a response.
         /// </summary>
+        /// <param name="message">The message.</param>
+        /// <param name="timeout">The timeout.</param>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns></returns>
+        public Task<Envelope> AskAsync(Message message, TimeSpan timeout, CancellationToken cancellationToken = default(CancellationToken)) {
+            // get namespace
+            Namespace @namespace = GetNamespace(message.Address.Namespace);
+
+            return @namespace.AskAsync(message, timeout, cancellationToken);
+        }
+
+        /// <summary>
+        /// Sends the message to the provided service address and waits for a response.
+        /// </summary>
         /// <param name="addr">The service adddress.</param>
         /// <param name="body">The body.</param>
         /// <param name="timeout">The timeout.</param>
@@ -253,10 +291,11 @@ namespace Holon
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns></returns>
         public Task<Envelope> AskAsync(ServiceAddress addr, byte[] body, TimeSpan timeout, IDictionary<string, object> headers = null, CancellationToken cancellationToken = default(CancellationToken)) {
-            // get namespace
-            Namespace @namespace = GetNamespace(addr.Namespace);
-
-            return @namespace.AskAsync(addr, body, timeout, headers, cancellationToken);
+            return AskAsync(new Message() {
+                Address = addr,
+                Body = body,
+                Headers = headers
+            }, timeout, cancellationToken);
         }
 
         /// <summary>
@@ -269,7 +308,11 @@ namespace Holon
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns></returns>
         public Task<Envelope> AskAsync(string addr, byte[] body, TimeSpan timeout, IDictionary<string, object> headers = null, CancellationToken cancellationToken = default(CancellationToken)) {
-            return AskAsync(new ServiceAddress(addr), body, timeout, headers, cancellationToken);
+            return AskAsync(new Message() {
+                Address = new ServiceAddress(addr),
+                Body = body,
+                Headers = headers
+            }, timeout, cancellationToken);
         }
 
         /// <summary>
@@ -282,9 +325,24 @@ namespace Holon
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns></returns>
         public Task<Envelope[]> BroadcastAsync(ServiceAddress addr, byte[] body, TimeSpan timeout, IDictionary<string, object> headers = null, CancellationToken cancellationToken = default(CancellationToken)) {
-            Namespace @namespace = GetNamespace(addr.Namespace);
+            return BroadcastAsync(new Message() {
+                Address = addr,
+                Body = body,
+                Headers = headers
+            }, timeout, cancellationToken);
+        }
 
-            return @namespace.BroadcastAsync(addr, body, timeout, headers, cancellationToken);
+        /// <summary>
+        /// Broadcasts the message to the provided service address and waits for any responses within the timeout.
+        /// </summary>
+        /// <param name="message">The message.</param>
+        /// <param name="timeout">The timeout to receive all replies.</param>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns></returns>
+        public Task<Envelope[]> BroadcastAsync(Message message, TimeSpan timeout,CancellationToken cancellationToken = default(CancellationToken)) {
+            Namespace @namespace = GetNamespace(message.Address.Namespace);
+
+            return @namespace.BroadcastAsync(message, timeout, cancellationToken);
         }
 
         /// <summary>
@@ -297,7 +355,11 @@ namespace Holon
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns></returns>
         public Task<Envelope[]> BroadcastAsync(string addr, byte[] body, TimeSpan timeout, IDictionary<string, object> headers = null, CancellationToken cancellationToken = default(CancellationToken)) {
-            return BroadcastAsync(new ServiceAddress(addr), body, timeout, headers, cancellationToken);
+            return BroadcastAsync(new Message() {
+                Address = new ServiceAddress(addr),
+                Body = body,
+                Headers = headers
+            }, timeout, cancellationToken);
         }
         #endregion
 
@@ -599,7 +661,7 @@ namespace Holon
         /// <param name="configuration">The configuration.</param>
         /// <returns></returns>
         public IT Proxy<IT>(string address, ProxyConfiguration configuration) {
-            return Proxy<IT>(address, configuration);
+            return Proxy<IT>(new ServiceAddress(address), configuration);
         }
 
         /// <summary>
@@ -764,15 +826,11 @@ namespace Holon
     /// </summary>
     public class UnroutableReplyEventArgs
     {
-        #region Fields
-        private Envelope _envelope;
-        #endregion
-
         #region Properties
         /// <summary>
         /// Gets the envelope.
         /// </summary>
-        public Envelope Envelope { get; }
+        public Envelope Envelope { get; private set; }
         #endregion
 
         #region Constructors
@@ -781,7 +839,7 @@ namespace Holon
         /// </summary>
         /// <param name="envelope">The unroutable envelope.</param>
         public UnroutableReplyEventArgs(Envelope envelope) {
-            _envelope = envelope;
+            Envelope = envelope;
         }
         #endregion
     }

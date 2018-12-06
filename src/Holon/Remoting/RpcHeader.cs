@@ -10,7 +10,8 @@ namespace Holon.Remoting
     internal sealed class RpcHeader
     {
         #region Constants
-        internal const string HEADER_NAME = "X-RPC";
+        internal const string HEADER_NAME = "X-Holon-RPC";
+        internal const string HEADER_NAME_LEGACY = "X-RPC";
         internal const string HEADER_VERSION = "1.1";
         #endregion
 

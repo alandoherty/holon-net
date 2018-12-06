@@ -1,4 +1,5 @@
-﻿using Holon.Services;
+﻿using Holon.Metrics.Tracing;
+using Holon.Services;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -24,6 +25,20 @@ namespace Holon
         /// Gets or sets the address.
         /// </summary>
         public ServiceAddress Address { get; set; }
+
+        /// <summary>
+        /// Gets or sets the trace id.
+        /// </summary>
+        public string TraceId {
+            get {
+                if (Headers.TryGetValue(TraceHeader.HeaderName, out object traceId))
+                    return Encoding.UTF8.GetString(traceId as byte[]);
+                else
+                    return null;
+            } set {
+                Headers[TraceHeader.HeaderName] = Encoding.UTF8.GetBytes(value);
+            }
+        }
 
         /// <summary>
         /// Creates a new message.

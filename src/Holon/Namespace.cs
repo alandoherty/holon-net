@@ -53,13 +53,11 @@ namespace Holon
         /// <summary>
         /// Broadcasts the message to the provided service address and waits for any responses within the timeout.
         /// </summary>
-        /// <param name="addr">The service adddress.</param>
-        /// <param name="body">The body.</param>
+        /// <param name="message">The message.</param>
         /// <param name="timeout">The timeout to receive all replies.</param>
-        /// <param name="headers">The headers.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns></returns>
-        public async Task<Envelope[]> BroadcastAsync(ServiceAddress addr, byte[] body, TimeSpan timeout, IDictionary<string, object> headers = null, CancellationToken cancellationToken = default(CancellationToken)) {
+        public async Task<Envelope[]> BroadcastAsync(Message message, TimeSpan timeout, CancellationToken cancellationToken = default(CancellationToken)) {
             if (timeout == Timeout.InfiniteTimeSpan)
                 throw new ArgumentException(nameof(timeout), "The timeout cannot be infinite for a broadcast");
 
@@ -68,14 +66,14 @@ namespace Holon
             Task<Envelope[]> envelopeWait = WaitManyReplyAsync(envelopeId, timeout, cancellationToken);
 
             // add timeout header
-            if (headers == null)
-                headers = new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase);
+            if (message.Headers == null)
+                message.Headers = new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase);
 
-            if (!headers.ContainsKey("x-message-ttl"))
-                headers["x-message-ttl"] = timeout.TotalSeconds;
+            if (!message.Headers.ContainsKey("x-message-ttl"))
+                message.Headers["x-message-ttl"] = timeout.TotalSeconds;
 
             // send
-            await _broker.SendAsync(addr.Namespace, addr.RoutingKey, body, headers, _replyQueue.Name, envelopeId.ToString()).ConfigureAwait(false);
+            await _broker.SendAsync(message.Address.Namespace, message.Address.RoutingKey, message.Body, message.Headers, _replyQueue.Name, envelopeId.ToString()).ConfigureAwait(false);
 
             // the actual receiver handler is setup since it's syncronous, but now we wait
             return await envelopeWait.ConfigureAwait(false);
@@ -191,25 +189,23 @@ namespace Holon
         /// <summary>
         /// Sends the message to the provided service address and waits for a response.
         /// </summary>
-        /// <param name="addr">The service adddress.</param>
-        /// <param name="body">The body.</param>
+        /// <param name="message">The message.</param>
         /// <param name="timeout">The timeout.</param>
-        /// <param name="headers">The headers.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns></returns>
-        public async Task<Envelope> AskAsync(ServiceAddress addr, byte[] body, TimeSpan timeout, IDictionary<string, object> headers = null, CancellationToken cancellationToken = default(CancellationToken)) {
+        public async Task<Envelope> AskAsync(Message message, TimeSpan timeout, CancellationToken cancellationToken = default(CancellationToken)) {
             // setup receive handler
             Guid envelopeId = Guid.NewGuid();
             Task<Envelope> envelopeWait = WaitReplyAsync(envelopeId, timeout, cancellationToken);
 
             // add timeout header
-            if (headers == null)
-                headers = new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase);
+            if (message.Headers == null)
+                message.Headers = new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase);
 
-            headers["x-message-ttl"] = timeout.TotalSeconds;
+            message.Headers["x-message-ttl"] = timeout.TotalSeconds;
 
             // send
-            await _broker.SendAsync(addr.Namespace, addr.RoutingKey, body, headers, _replyQueue.Name, envelopeId.ToString()).ConfigureAwait(false);
+            await _broker.SendAsync(message.Address.Namespace, message.Address.RoutingKey, message.Body, message.Headers, _replyQueue.Name, envelopeId.ToString()).ConfigureAwait(false);
 
             // the actual receiver handler is setup since it's syncronous, but now we wait
             return await envelopeWait.ConfigureAwait(false);

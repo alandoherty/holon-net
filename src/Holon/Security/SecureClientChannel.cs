@@ -104,18 +104,18 @@ namespace Holon.Security
 #endif
 
                     // request certificate 
-                    SecureHeader requestCertificate = new SecureHeader(SecureHeader.HEADER_VERSION, SecureMessageType.RequestCertificate);
+                    SecureHeader requestCertificate = new SecureHeader(SecureHeader.HeaderVersion, SecureMessageType.RequestCertificate);
 
                     // send request
                     Envelope respondCert = await _node.AskAsync(_address, new byte[0], _configuration.HandshakeTimeout, new Dictionary<string, object>() {
-                        { SecureHeader.HEADER_NAME, requestCertificate.ToString() }
+                        { SecureHeader.HeaderName, requestCertificate.ToString() }
                     });
 
                     // parse response header
                     SecureHeader respondCertHeader = null;
 
                     try {
-                        respondCertHeader = new SecureHeader(Encoding.UTF8.GetString(respondCert.Headers[SecureHeader.HEADER_NAME] as byte[]));
+                        respondCertHeader = new SecureHeader(Encoding.UTF8.GetString(respondCert.Headers[SecureHeader.HeaderName] as byte[]));
                     } catch (Exception ex) {
                         throw new InvalidDataException("The certificate request response header was invalid", ex);
                     }
@@ -189,7 +189,7 @@ namespace Holon.Security
                     HandshakeIV = _handshakeEncryptionIV,
                     HandshakeKey = _handshakeEncryptionKey
                 };
-                SecureHeader requestKey = new SecureHeader(SecureHeader.HEADER_VERSION, SecureMessageType.RequestKey);
+                SecureHeader requestKey = new SecureHeader(SecureHeader.HeaderVersion, SecureMessageType.RequestKey);
 
                 // send request
                 Envelope respondKey = null;
@@ -203,7 +203,7 @@ namespace Holon.Security
                         byte[] keyRequestBody = rsa.Encrypt(ms.ToArray(), RSAEncryptionPadding.Pkcs1);
 
                         respondKey = await _node.AskAsync(_address, keyRequestBody, _configuration.HandshakeTimeout, new Dictionary<string, object>() {
-                            { SecureHeader.HEADER_NAME, requestKey.ToString() }
+                            { SecureHeader.HeaderName, requestKey.ToString() }
                         });
                     }
                 }
@@ -212,7 +212,7 @@ namespace Holon.Security
                 SecureHeader respondKeyHeader = null;
 
                 try {
-                    respondKeyHeader = new SecureHeader(Encoding.UTF8.GetString(respondKey.Headers[SecureHeader.HEADER_NAME] as byte[]));
+                    respondKeyHeader = new SecureHeader(Encoding.UTF8.GetString(respondKey.Headers[SecureHeader.HeaderName] as byte[]));
                 } catch (Exception ex) {
                     throw new InvalidDataException("The key request response header was invalid", ex);
                 }
@@ -339,12 +339,11 @@ namespace Holon.Security
         /// <summary>
         /// Sends the envelope message to the provided service address and waits for a response.
         /// </summary>
-        /// <param name="body">The body.</param>
-        /// <param name="headers">The headers.</param>
+        /// <param name="message">The message.</param>
         /// <param name="timeout">The timeout.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns></returns>
-        public async Task<Envelope> AskAsync(byte[] body, TimeSpan timeout, IDictionary<string, object> headers = null, CancellationToken cancellationToken = default(CancellationToken)) {
+        public async Task<Envelope> AskAsync(Message message, TimeSpan timeout, CancellationToken cancellationToken = default(CancellationToken)) {
             // perform handshake if we don't have our key yet or it has expired
             if (_serverEncryptionKey == null || SecureUtils.HasTimeSlotExpired(_serverEncryptionKeyTimeSlot, false)) {
 #if DEBUG_SECURE
@@ -356,19 +355,21 @@ namespace Holon.Security
             }
 
             // add secure header
-            if (headers == null)
-                headers = new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase);
+            if (message.Headers == null)
+                message.Headers = new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase);
 
-            headers[SecureHeader.HEADER_NAME] = new SecureHeader(SecureHeader.HEADER_VERSION, SecureMessageType.RequestMessage).ToString();
+            message.Headers[SecureHeader.HeaderName] = new SecureHeader(SecureHeader.HeaderVersion, SecureMessageType.RequestMessage).ToString();
+            message.Address = _address;
+            message.Body = EncryptBody(message.Body);
 
             // send the envelope and wait for the response
-            Envelope response = await _node.AskAsync(_address, EncryptBody(body), timeout, headers, cancellationToken);
+            Envelope response = await _node.AskAsync(message, timeout, cancellationToken);
 
-            if (!response.Headers.ContainsKey(SecureHeader.HEADER_NAME))
+            if (!response.Headers.ContainsKey(SecureHeader.HeaderName))
                 throw new InvalidDataException("The secure service sent an invalid response");
 
             // decode header and take action depending on the response
-            SecureHeader header = new SecureHeader(Encoding.UTF8.GetString(response.Headers[SecureHeader.HEADER_NAME] as byte[]));
+            SecureHeader header = new SecureHeader(Encoding.UTF8.GetString(response.Headers[SecureHeader.HeaderName] as byte[]));
 
             if (header.Type == SecureMessageType.RespondMessage) {
                 using (MemoryStream outputStream = new MemoryStream()) {
@@ -406,10 +407,9 @@ namespace Holon.Security
         /// <summary>
         /// Sends the envelope message to the provided service address.
         /// </summary>
-        /// <param name="body">The body.</param>
-        /// <param name="headers">The headers.</param>
+        /// <param name="message">The message.</param>
         /// <returns></returns>
-        public async Task SendAsync(byte[] body, IDictionary<string, object> headers = null) {
+        public async Task SendAsync(Message message) {
             // perform handshake if we don't have our key yet or it has expired
             if (_serverEncryptionKey == null || SecureUtils.HasTimeSlotExpired(_serverEncryptionKeyTimeSlot, false)) {
 #if DEBUG_SECURE
@@ -421,22 +421,16 @@ namespace Holon.Security
             }
 
             // add secure header
-            if (headers == null)
-                headers = new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase);
+            if (message.Headers == null)
+                message.Headers = new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase);
 
-            headers[SecureHeader.HEADER_NAME] = new SecureHeader(SecureHeader.HEADER_VERSION, SecureMessageType.RequestMessage).ToString();
+            message.Headers[SecureHeader.HeaderName] = new SecureHeader(SecureHeader.HeaderVersion, SecureMessageType.RequestMessage).ToString();
 
             // send the envelope
-            await _node.SendAsync(_address, EncryptBody(body), headers);
-        }
+            message.Body = EncryptBody(message.Body);
+            message.Address = _address;
 
-        /// <summary>
-        /// Sends a envelope body to the address.
-        /// </summary>
-        /// <param name="body">The body.</param>
-        /// <returns></returns>
-        public Task SendAsync(byte[] body) {
-            return SendAsync(body, new Dictionary<string, object>());
+            await _node.SendAsync(message);
         }
 
         /// <summary>
@@ -470,12 +464,11 @@ namespace Holon.Security
         /// <summary>
         /// Broadcasts the envelope message to the provided service address and waits for a response.
         /// </summary>
-        /// <param name="body">The body.</param>
-        /// <param name="headers">The headers.</param>
+        /// <param name="message">The message.</param>
         /// <param name="timeout">The timeout to receive all replies.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns></returns>
-        public async Task<Envelope[]> BroadcastAsync(byte[] body, TimeSpan timeout, IDictionary<string, object> headers = null, CancellationToken cancellationToken = default(CancellationToken)) {
+        public async Task<Envelope[]> BroadcastAsync(Message message, TimeSpan timeout, CancellationToken cancellationToken = default(CancellationToken)) {
             // perform handshake if we don't have our key yet or it has expired
             if (_serverEncryptionKey == null || SecureUtils.HasTimeSlotExpired(_serverEncryptionKeyTimeSlot, false)) {
 #if DEBUG_SECURE
@@ -487,20 +480,22 @@ namespace Holon.Security
             }
 
             // add secure header
-            if (headers == null)
-                headers = new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase);
+            if (message.Headers == null)
+                message.Headers = new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase);
 
-            headers[SecureHeader.HEADER_NAME] = new SecureHeader(SecureHeader.HEADER_VERSION, SecureMessageType.RequestMessage).ToString();
+            message.Headers[SecureHeader.HeaderName] = new SecureHeader(SecureHeader.HeaderVersion, SecureMessageType.RequestMessage).ToString();
+            message.Address = _address;
+            message.Body = EncryptBody(message.Body);
 
             // send the envelope and wait for the response
-            Envelope[] responses = await _node.BroadcastAsync(_address, EncryptBody(body), timeout, headers, cancellationToken);
+            Envelope[] responses = await _node.BroadcastAsync(message, timeout, cancellationToken);
 
             return responses.Select(response => {
-                if (!response.Headers.ContainsKey(SecureHeader.HEADER_NAME))
+                if (!response.Headers.ContainsKey(SecureHeader.HeaderName))
                     throw new InvalidDataException("The secure service sent an invalid response");
 
                 // decode header and take action depending on the response
-                SecureHeader header = new SecureHeader(Encoding.UTF8.GetString(response.Headers[SecureHeader.HEADER_NAME] as byte[]));
+                SecureHeader header = new SecureHeader(Encoding.UTF8.GetString(response.Headers[SecureHeader.HeaderName] as byte[]));
 
                 try {
                     if (header.Type == SecureMessageType.RespondMessage) {

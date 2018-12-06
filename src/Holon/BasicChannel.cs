@@ -100,35 +100,35 @@ namespace Holon
         /// <summary>
         /// Sends the envelope message to the provided service address and waits for a response.
         /// </summary>
-        /// <param name="body">The body.</param>
-        /// <param name="headers">The headers.</param>
+        /// <param name="message">The message.</param>
         /// <param name="timeout">The timeout.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns></returns>
-        public Task<Envelope> AskAsync(byte[] body, TimeSpan timeout, IDictionary<string, object> headers = null, CancellationToken cancellationToken = default(CancellationToken)) {
-            return _node.AskAsync(_address, body, timeout, headers, cancellationToken);
+        public Task<Envelope> AskAsync(Message message, TimeSpan timeout, CancellationToken cancellationToken = default(CancellationToken)) {
+            message.Address = _address;
+            return _node.AskAsync(message, timeout, cancellationToken);
         }
 
         /// <summary>
         /// Sends the envelope message to the provided service address.
         /// </summary>
-        /// <param name="body">The body.</param>
-        /// <param name="headers">The headers.</param>
+        /// <param name="message">The message.</param>
         /// <returns></returns>
-        public Task SendAsync(byte[] body, IDictionary<string, object> headers = null) {
-            return _node.SendAsync(_address, body, headers);
+        public Task SendAsync(Message message) {
+            message.Address = _address;
+            return _node.SendAsync(message);
         }
 
         /// <summary>
         /// Broadcasts the envelope message to the provided service address and waits for a response.
         /// </summary>
-        /// <param name="body">The body.</param>
-        /// <param name="headers">The headers.</param>
+        /// <param name="message">The message.</param>
         /// <param name="timeout">The timeout to receive all replies.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns></returns>
-        public Task<Envelope[]> BroadcastAsync(byte[] body, TimeSpan timeout, IDictionary<string, object> headers = null, CancellationToken cancellationToken = default(CancellationToken)) {
-            return _node.BroadcastAsync(_address, body, timeout, headers, cancellationToken);
+        public Task<Envelope[]> BroadcastAsync(Message message, TimeSpan timeout, CancellationToken cancellationToken = default(CancellationToken)) {
+            message.Address = _address;
+            return _node.BroadcastAsync(message, timeout, cancellationToken);
         }
         #endregion
 

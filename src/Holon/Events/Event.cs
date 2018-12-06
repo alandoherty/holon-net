@@ -17,16 +17,37 @@ namespace Holon.Events
         #region Fields
         private string _name;
         private string _resource;
+        private string _resourceType;
         private byte[] _data;
+        private DateTimeOffset _timestamp;
+        private string _id;
         #endregion
 
         #region Properties
+        /// <summary>
+        /// Gets the ID.
+        /// </summary>
+        public string ID {
+            get {
+                return _id;
+            }
+        }
+
         /// <summary>
         /// Gets the name.
         /// </summary>
         public string Name {
             get {
                 return _name;
+            }
+        }
+
+        /// <summary>
+        /// Gets the resource type.
+        /// </summary>
+        public string ResourceType {
+            get {
+                return _resourceType;
             }
         }
 
@@ -45,6 +66,15 @@ namespace Holon.Events
         public byte[] Data {
             get {
                 return _data;
+            }
+        }
+
+        /// <summary>
+        /// Gets the timestamp.
+        /// </summary>
+        public DateTimeOffset Timestamp {
+            get {
+                return _timestamp;
             }
         }
         #endregion
@@ -124,22 +154,16 @@ namespace Holon.Events
         /// <summary>
         /// Creates a new event.
         /// </summary>
+        /// <param name="id">The ID.</param>
+        /// <param name="resourceType">The resource type.</param>
         /// <param name="resource">The resource.</param>
         /// <param name="name">The event name.</param>
         /// <param name="data">The data.</param>
-        internal Event(string resource, string name, byte[] data) {
+        internal Event(/*string id, string resourceType, */string resource, string name, byte[] data = null) {
             _resource = resource;
+           // _resourceType = resourceType;
             _name = name;
             _data = data;
-        }
-
-        /// <summary>
-        /// Creates a new event.
-        /// </summary>
-        /// <param name="resource">The resource.</param>
-        /// <param name="name">The event name.</param>
-        internal Event(string resource, string name) 
-            : this(resource, name, null) {
         }
         #endregion
     }

@@ -124,17 +124,26 @@ namespace Holon.Remoting
 
             // create headers
             IDictionary<string, object> headers = new Dictionary<string, object>() {
-                { RpcHeader.HEADER_NAME, header.ToString() }
+                { RpcHeader.HEADER_NAME, header.ToString() },
+                { RpcHeader.HEADER_NAME_LEGACY, header.ToString() }
             };
 
             // ask or send
             if (method.GetCustomAttribute<RpcOperationAttribute>().NoReply) {
                 // send operation
-                await _channel.SendAsync(requestBody, headers);
+                await _channel.SendAsync(new Message() {
+                    Body = requestBody,
+                    Headers = headers,
+                    TraceId = _configuration.TraceId
+                });
 
                 return default(TT);
             } else {
-                Envelope res = await _channel.AskAsync(requestBody, _configuration.Timeout, headers);
+                Envelope res = await _channel.AskAsync(new Message() {
+                    Body = requestBody,
+                    Headers = headers,
+                    TraceId = _configuration.TraceId
+                }, _configuration.Timeout);
 
                 // transform response
                 byte[] responseBody = res.Body;

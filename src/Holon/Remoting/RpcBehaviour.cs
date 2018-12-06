@@ -107,8 +107,16 @@ namespace Holon.Remoting
                     res = new RpcResponse("InvalidOperation", "The envelope does not specify a correlation ID");
 
                 // apply request if we don't have a response already, typically an error
-                if (res == null)
+                if (res == null) {
+                    // setup context
+                    RpcContext.Current = new RpcContext() { Envelope = envelope};
+
+                    // apply request
                     res = await ApplyRequestAsync(req, memberInfo).ConfigureAwait(false);
+
+                    // destroy context
+                    RpcContext.Current = null;
+                }
                 
                 // send response unless no-reply 
                 if (!noReply) {
@@ -116,8 +124,11 @@ namespace Holon.Remoting
                     byte[] resBody = serializer.SerializeResponse(res);
 
                     // send reply
+                    string rpcHeader = new RpcHeader(RpcHeader.HEADER_VERSION, serializer.Name, RpcMessageType.Single).ToString();
+
                     Dictionary<string, object> headers = new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase) {
-                        { RpcHeader.HEADER_NAME, new RpcHeader(RpcHeader.HEADER_VERSION, serializer.Name, RpcMessageType.Single).ToString() }
+                        { RpcHeader.HEADER_NAME, rpcHeader },
+                        { RpcHeader.HEADER_NAME_LEGACY, rpcHeader }
                     };
 
                     // reply
