@@ -422,15 +422,16 @@ namespace Holon
                 _declaredEventNamespaces.Add(addr.Namespace);
             }
         }
-
+        
         /// <summary>
         /// Emits an event on the provided address.
         /// </summary>
         /// <param name="addr">The event address.</param>
+        /// <param name="id">The event ID.</param>
         /// <param name="data">The event data.</param>
         /// <exception cref="FormatException">If the event address is invalid.</exception>
         /// <returns></returns>
-        public async Task EmitAsync(EventAddress addr, object data) {
+        public async Task EmitAsync(EventAddress addr, object data, string id = null) {
             // check if not declared
             bool declared = false;
 
@@ -442,7 +443,7 @@ namespace Holon
                 await DeclareEventAsync(addr).ConfigureAwait(false);
 
             // serialize data payload
-            Event e = new Event(addr.Resource, addr.Name);
+            Event e = new Event(id ?? Guid.NewGuid().ToString(), addr.Namespace, addr.Resource, addr.Name);
             e.Serialize(data);
 
             // serialize

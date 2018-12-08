@@ -60,6 +60,7 @@ namespace Example.General
         {
             public string Potato { get; set; }
         }
+
         static async Task AsyncMain(string[] args) {
             // attach node
             TestNode = await Node.CreateFromEnvironmentAsync(new NodeConfiguration() {

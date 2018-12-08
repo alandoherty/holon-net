@@ -17,7 +17,7 @@ namespace Holon.Events
         #region Fields
         private string _name;
         private string _resource;
-        private string _resourceType;
+        private string _namespace;
         private byte[] _data;
         private DateTimeOffset _timestamp;
         private string _id;
@@ -43,11 +43,11 @@ namespace Holon.Events
         }
 
         /// <summary>
-        /// Gets the resource type.
+        /// Gets the namespace.
         /// </summary>
-        public string ResourceType {
+        public string Namespace {
             get {
-                return _resourceType;
+                return _namespace;
             }
         }
 
@@ -155,13 +155,14 @@ namespace Holon.Events
         /// Creates a new event.
         /// </summary>
         /// <param name="id">The ID.</param>
-        /// <param name="resourceType">The resource type.</param>
+        /// <param name="namespace">The namespace.</param>
         /// <param name="resource">The resource.</param>
         /// <param name="name">The event name.</param>
         /// <param name="data">The data.</param>
-        internal Event(/*string id, string resourceType, */string resource, string name, byte[] data = null) {
+        internal Event(string id, string @namespace, string resource, string name, byte[] data = null) {
+            _id = id;
             _resource = resource;
-           // _resourceType = resourceType;
+            _namespace = @namespace;
             _name = name;
             _data = data;
         }
