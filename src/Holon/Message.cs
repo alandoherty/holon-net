@@ -36,7 +36,10 @@ namespace Holon
                 else
                     return null;
             } set {
-                Headers[TraceHeader.HeaderName] = Encoding.UTF8.GetBytes(value);
+                if (value != null)
+                    Headers[TraceHeader.HeaderName] = Encoding.UTF8.GetBytes(value);
+                else
+                    Headers.Remove(TraceHeader.HeaderName);
             }
         }
 

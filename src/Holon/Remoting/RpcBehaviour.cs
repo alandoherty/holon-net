@@ -40,8 +40,11 @@ namespace Holon.Remoting
         /// <returns></returns>
         public override Task HandleAsync(Envelope envelope) {
             // try and get the header info
-            if (!envelope.Headers.TryGetValue(RpcHeader.HEADER_NAME, out object rpcHeader))
-                throw new InvalidOperationException("The incoming envelope is not a valid RPC message");
+            if (!envelope.Headers.TryGetValue(RpcHeader.HEADER_NAME, out object rpcHeader)) {
+                if (!envelope.Headers.TryGetValue(RpcHeader.HEADER_NAME_LEGACY, out rpcHeader)) {
+                    throw new InvalidOperationException("The response envelope is not a valid RPC message");
+                }
+            }
 
             // gets the header
             RpcHeader header = new RpcHeader(Encoding.UTF8.GetString(rpcHeader as byte[]));

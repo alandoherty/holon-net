@@ -149,9 +149,12 @@ namespace Holon.Remoting
                 byte[] responseBody = res.Body;
 
                 // try and get response header
-                if (!res.Headers.TryGetValue(RpcHeader.HEADER_NAME, out object resHeaderData))
-                    throw new InvalidOperationException("The response envelope is not a valid RPC message");
-
+                if (!res.Headers.TryGetValue(RpcHeader.HEADER_NAME, out object resHeaderData)) {
+                    if (!res.Headers.TryGetValue(RpcHeader.HEADER_NAME_LEGACY, out resHeaderData)) {
+                        throw new InvalidOperationException("The response envelope is not a valid RPC message");
+                    }
+                }
+                   
                 RpcHeader resHeader = new RpcHeader(Encoding.UTF8.GetString(resHeaderData as byte[]));
 
                 // deserialize response
