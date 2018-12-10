@@ -50,16 +50,25 @@ namespace Example.General
         }
     }
 
+    class EventObserver : IObserver<Event>
+    {
+        public void OnCompleted() {
+        }
+
+        public void OnError(Exception error) {
+        }
+
+        public void OnNext(Event value) {
+
+        }
+    }
+
     class Program
     {
         public static Node TestNode { get; set; }
 
         static void Main(string[] args) => AsyncMain(args).Wait();
-
-        class EventTest
-        {
-            public string Potato { get; set; }
-        }
+       
 
         static async Task AsyncMain(string[] args) {
             // attach node
@@ -67,20 +76,17 @@ namespace Example.General
                 ThrowUnhandledExceptions = true
             });
 
-            TestNode.TraceBegin += (o, e) => Console.WriteLine($"Begin trace {e.TraceId} for {e.Envelope.ID} at {DateTime.UtcNow}");
-            TestNode.TraceEnd += (o, e) => Console.WriteLine($"End trace {e.TraceId} for {e.Envelope.ID} at {DateTime.UtcNow}");
-
             // attach
-            await TestNode.AttachAsync("auth:login", RpcBehaviour.Bind<ITest001>(new Test001(Guid.NewGuid())));
+            //await TestNode.AttachAsync("auth:login", RpcBehaviour.Bind<ITest001>(new Test001(Guid.NewGuid())));
+            
+            // subscribe
+            (await TestNode.SubscribeAsync("auth:login.happened"))
+                .AsObservable().Subscribe(new EventObserver());
 
-            ITest001 proxy = TestNode.Proxy<ITest001>("auth:login", new ProxyConfiguration() {
-                TraceId = Guid.NewGuid().ToString()
-            });
-
-            await proxy.Login(new LoginRequestMsg() {
+            await TestNode.EmitAsync("auth:login.happened", new LoginRequestMsg() {
                 Password = "password",
                 Username = "username"
-            });
+            }).ConfigureAwait(false);
 
             await Task.Delay(50000);
         }

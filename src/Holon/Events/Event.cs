@@ -165,6 +165,7 @@ namespace Holon.Events
             _namespace = @namespace;
             _name = name;
             _data = data;
+            _timestamp = DateTime.UtcNow;
         }
         #endregion
     }

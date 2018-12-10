@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard1.6</TargetFramework>
-    <Version>0.1.6.2</Version>
+    <Version>0.1.6.3</Version>
     <Authors>Alan Doherty</Authors>
     <Company>Alan Doherty</Company>
     <Description>A minimal service and event bus with additional support for RPC</Description>
@@ -10,11 +10,11 @@
     <PackageProjectUrl>https://github.com/alandoherty/holon-net</PackageProjectUrl>
     <RepositoryUrl>https://github.com/alandoherty/holon-net</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <AssemblyVersion>0.1.6.2</AssemblyVersion>
+    <AssemblyVersion>0.1.6.3</AssemblyVersion>
     <PackageLicenseUrl>https://github.com/alandoherty/holon-net/blob/master/LICENSE</PackageLicenseUrl>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageIconUrl>https://s3-eu-west-1.amazonaws.com/assets.alandoherty.co.uk/github/holon-net-nuget.png</PackageIconUrl>
-    <FileVersion>0.1.6.2</FileVersion>
+    <FileVersion>0.1.6.3</FileVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
