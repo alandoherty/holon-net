@@ -31,7 +31,7 @@ namespace Holon.Events.Serializers
             using (MemoryStream ms = new MemoryStream(body)) {
                 EventMsg msg = Serializer.Deserialize<EventMsg>(ms);
 
-                return new Event(msg.ID, msg.ResourceType,  msg.Resource, msg.Name, msg.Data);
+                return new Event(msg.ID, msg.Namespace,  msg.Resource, msg.Name, msg.Data);
             }
         }
 
@@ -42,6 +42,7 @@ namespace Holon.Events.Serializers
                 eventMsg.Type = "serialized";
                 eventMsg.Data = e.Data;
                 eventMsg.Resource = e.Resource;
+                eventMsg.Namespace = e.Name;
                 Serializer.Serialize(ms, eventMsg);
                 return ms.ToArray();
             }
@@ -64,7 +65,7 @@ namespace Holon.Events.Serializers
         public byte[] Data { get; set; }
 
         [ProtoMember(5, IsRequired = true)]
-        public string ResourceType { get; set; }
+        public string Namespace { get; set; }
 
         [ProtoMember(6, IsRequired = true)]
         public string ID { get; set; }
