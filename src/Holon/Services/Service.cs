@@ -294,11 +294,9 @@ namespace Holon.Services
         }
 
         void IObserver<InboundMessage>.OnCompleted() {
-            throw new NotImplementedException();
         }
 
         void IObserver<InboundMessage>.OnError(Exception error) {
-            throw new NotImplementedException();
         }
 
         async void IObserver<InboundMessage>.OnNext(InboundMessage message) {

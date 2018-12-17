@@ -77,16 +77,9 @@ namespace Example.General
             });
 
             // attach
-            //await TestNode.AttachAsync("auth:login", RpcBehaviour.Bind<ITest001>(new Test001(Guid.NewGuid())));
-            
-            // subscribe
-            (await TestNode.SubscribeAsync("auth:login.happened"))
-                .AsObservable().Subscribe(new EventObserver());
+            Service service = await TestNode.AttachAsync("auth:login", RpcBehaviour.Bind<ITest001>(new Test001(Guid.NewGuid())));
 
-            await TestNode.EmitAsync("auth:login.happened", new LoginRequestMsg() {
-                Password = "password",
-                Username = "username"
-            }).ConfigureAwait(false);
+            service.Dispose();
 
             await Task.Delay(50000);
         }
