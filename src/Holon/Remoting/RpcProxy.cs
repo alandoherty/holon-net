@@ -109,14 +109,16 @@ namespace Holon.Remoting
         protected virtual async Task<TT> InvokeOperationAsync<TT>(MethodInfo method, object[] args, Type returnType) {
             // build arguments
             Dictionary<string, object> argsPayload = new Dictionary<string, object>();
+            Dictionary<string, Type> argsTypes = new Dictionary<string, Type>();
             ParameterInfo[] argsMethod = method.GetParameters();
 
             for (int i = 0; i < args.Length; i++) {
                 argsPayload[argsMethod[i].Name] = args[i];
+                argsTypes[argsMethod[i].Name] = argsMethod[i].ParameterType;
             }
 
             // create request
-            RpcRequest req = new RpcRequest(_contractAttr.Name != null ? _contractAttr.Name : _typeInfo.Name, method.Name, argsPayload);
+            RpcRequest req = new RpcRequest(_contractAttr.Name != null ? _contractAttr.Name : _typeInfo.Name, method.Name, argsPayload, argsTypes);
 
             // serialize
             byte[] requestBody = new ProtobufRpcSerializer().SerializeRequest(req);

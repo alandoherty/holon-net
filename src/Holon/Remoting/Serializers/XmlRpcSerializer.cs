@@ -37,6 +37,7 @@ namespace Holon.Remoting.Serializers
                 // read arguments
                 XElement arguments = req.Elements().SingleOrDefault((e) => e.Name == "Arguments");
                 Dictionary<string, object> argumentsData = new Dictionary<string, object>();
+                Dictionary<string, Type> argumentTypes = new Dictionary<string, Type>();
 
                 if (arguments != null) {
                     // resolve arguments
@@ -52,11 +53,12 @@ namespace Holon.Remoting.Serializers
 
                         if (argsMap.TryGetValue(argElement.Name.LocalName, out RpcArgument arg)) {
                             argumentsData[arg.Name] = DeserializeValue(arg.Type, argElement);
+                            argumentTypes[arg.Name] = arg.Type;
                         }
                     }
                 }
 
-                return new RpcRequest(iface.Value, op.Value, argumentsData);
+                return new RpcRequest(iface.Value, op.Value, argumentsData, argumentTypes);
             }
         }
 
@@ -128,7 +130,7 @@ namespace Holon.Remoting.Serializers
                 XElement data = req.Element(XName.Get("Data"));
 
                 if (data != null) {
-                    return new RpcResponse(DeserializeValue(dataType, data));
+                    return new RpcResponse(DeserializeValue(dataType, data), dataType);
                 } else {
                     // find the error element then
                     XElement err = req.Element(XName.Get("Error"));

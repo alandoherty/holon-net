@@ -31,6 +31,7 @@ namespace Holon.Remoting.Serializers
 
                 // convert arguments
                 Dictionary<string, object> args = new Dictionary<string, object>();
+                Dictionary<string, Type> argsTypes = new Dictionary<string, Type>();
                 RpcArgument[] rpcArgs = resolver(msg.Interface, msg.Operation);
 
                 if (msg.Arguments != null) {
@@ -39,11 +40,14 @@ namespace Holon.Remoting.Serializers
                             continue;
 
                         // add argument
-                        args.Add(arg.Key, arg.GetData(rpcArgs.Single(a => a.Name.Equals(arg.Key, StringComparison.CurrentCultureIgnoreCase)).Type));
+                        RpcArgument rpcArg = rpcArgs.Single(a => a.Name.Equals(arg.Key, StringComparison.CurrentCultureIgnoreCase));
+
+                        args.Add(arg.Key, arg.GetData(rpcArg.Type));
+                        argsTypes.Add(arg.Key, rpcArg.Type);
                     }
                 }
 
-                return new RpcRequest(msg.Interface, msg.Operation, args);
+                return new RpcRequest(msg.Interface, msg.Operation, args, argsTypes);
             }
         }
 
@@ -57,7 +61,7 @@ namespace Holon.Remoting.Serializers
                 ResponseMsg msg = Serializer.Deserialize<ResponseMsg>(ms);
 
                 if (msg.IsSuccess)
-                    return new RpcResponse(msg.Data.GetData(responseType));
+                    return new RpcResponse(msg.Data.GetData(responseType), responseType);
                 else
                     return new RpcResponse(msg.Error.Code, msg.Error.Message);
             }
@@ -73,9 +77,10 @@ namespace Holon.Remoting.Serializers
                 RequestMsg req = new RequestMsg();
                 req.Interface = request.Interface;
                 req.Operation = request.Operation;
+
                 req.Arguments = request.Arguments.Select(kv => {
                     ValueMsg value = new ValueMsg() { Key = kv.Key };
-                    value.SetData(kv.Value);
+                    value.SetData(kv.Value, request.ArgumentTypes[kv.Key]);
                     return value;
                 }).ToArray();
 
@@ -96,7 +101,7 @@ namespace Holon.Remoting.Serializers
 
                 if (response.IsSuccess) {
                     ValueMsg result = new ValueMsg();
-                    result.SetData(response.Data);
+                    result.SetData(response.Data, response.DataType);
                     res.Data = result;
                 } else {
                     res.Error = new ErrorMsg() {
@@ -147,40 +152,39 @@ namespace Holon.Remoting.Serializers
         /// Sets the data from a .NET type.
         /// </summary>
         /// <param name="val">The value.</param>
-        public void SetData(object val) {
+        /// <param name="type">The type to serialize as.</param>
+        public void SetData(object val, Type type) {
             if (val == null)
                 Data = null;
-            else if (val is string)
+            else if (type == typeof(string))
                 Data = Encoding.UTF8.GetBytes((string)val);
-            else if (val is sbyte)
+            else if (type == typeof(sbyte))
                 Data = new byte[] { (byte)(sbyte)val };
-            else if (val is short)
+            else if (type == typeof(short))
                 Data = BitConverter.GetBytes((short)val);
-            else if (val is int)
+            else if (type == typeof(int))
                 Data = BitConverter.GetBytes((int)val);
-            else if (val is long)
+            else if (type == typeof(long))
                 Data = BitConverter.GetBytes((long)val);
-            else if (val is byte)
+            else if (type == typeof(byte))
                 Data = new byte[] { (byte)val };
-            else if (val is ushort)
+            else if (type == typeof(ushort))
                 Data = BitConverter.GetBytes((ushort)val);
-            else if (val is uint)
+            else if (type == typeof(uint))
                 Data = BitConverter.GetBytes((uint)val);
-            else if (val is ulong)
+            else if (type == typeof(ulong))
                 Data = BitConverter.GetBytes((ulong)val);
-            else if (val is double)
+            else if (type == typeof(double))
                 Data = BitConverter.GetBytes((double)val);
-            else if (val is bool)
+            else if (type == typeof(bool))
                 Data = new byte[] { (bool)val ? (byte)1 : (byte)0 };
-            else if (val == null)
-                Data = null;
-            else if (val is Guid)
+            else if (type == typeof(Guid))
                 Data = ((Guid)val).ToByteArray();
-            else if (val is ServiceAddress)
+            else if (type == typeof(ServiceAddress))
                 Data = Encoding.UTF8.GetBytes(((ServiceAddress)val).ToString());
-            else if (val is byte[])
+            else if (type == typeof(byte[]))
                 Data = ((byte[])val);
-            else if (val is DateTime)
+            else if (type == typeof(DateTime))
                 Data = Encoding.UTF8.GetBytes(((DateTime)val).ToString());
             else {
                 TypeInfo typeInfo = val.GetType().GetTypeInfo();

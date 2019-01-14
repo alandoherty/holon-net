@@ -223,12 +223,12 @@ namespace Holon.Remoting
             
             // check if the operation returns anything
             if (operationMethod.ReturnType == typeof(Task)) {
-                return new RpcResponse(null);
+                return new RpcResponse(null, typeof(void));
             } else {
                 // get result
                 object realRes = methodResult.GetType().GetTypeInfo().GetProperty("Result").GetValue(methodResult);
 
-                return new RpcResponse(realRes);
+                return new RpcResponse(realRes, operationMethod.ReturnType);
             }
         }
 

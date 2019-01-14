@@ -11,16 +11,26 @@ namespace Holon.Remoting
     {
         #region Fields
         private object _data;
+        private Type _dataType;
         private RpcError _error;
         #endregion
 
         #region Properties
         /// <summary>
-        /// Gets or sets the data.
+        /// Gets the data.
         /// </summary>
         public object Data {
             get {
                 return _data;
+            }
+        }
+
+        /// <summary>
+        /// Gets the data type.
+        /// </summary>
+        public Type DataType {
+            get {
+                return _dataType;
             }
         }
 
@@ -48,7 +58,8 @@ namespace Holon.Remoting
         /// Creates a new RPC response.
         /// </summary>
         /// <param name="data">The provided data.</param>
-        internal RpcResponse(object data) {
+        /// <param name="type">The data type.</param>
+        internal RpcResponse(object data, Type type) {
             _data = data;
             _error = null;
         }

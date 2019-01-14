@@ -13,6 +13,7 @@ namespace Holon.Remoting
         private string _interface;
         private string _operation;
         private Dictionary<string, object> _arguments;
+        private Dictionary<string, Type> _argumentTypes;
         #endregion
 
         #region Properties
@@ -42,6 +43,15 @@ namespace Holon.Remoting
                 return _arguments;
             }
         }
+
+        /// <summary>
+        /// Gets the types of the arguments.
+        /// </summary>
+        public Dictionary<string, Type> ArgumentTypes {
+            get {
+                return _argumentTypes;
+            }
+        }
         #endregion
 
         #region Methods
@@ -54,10 +64,12 @@ namespace Holon.Remoting
         /// <param name="interface">The target interface.</param>
         /// <param name="operation">The target operation.</param>
         /// <param name="arguments">The arguments.</param>
-        internal RpcRequest(string @interface, string operation, Dictionary<string, object> arguments) {
+        /// <param name="argumentTypes">The argument types.</param>
+        internal RpcRequest(string @interface, string operation, Dictionary<string, object> arguments, Dictionary<string, Type> argumentTypes) {
             _interface = @interface;
             _operation = operation;
             _arguments = arguments;
+            _argumentTypes = argumentTypes;
         }
 
         /// <summary>
