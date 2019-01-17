@@ -3,8 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using RabbitMQ.Client.Events;
-using System.Threading.Tasks;
-using System.Threading.Tasks.Dataflow;
 using System.Threading;
 using Holon.Services;
 using System.Linq;
