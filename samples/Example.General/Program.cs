@@ -77,9 +77,9 @@ namespace Example.General
             });
 
             // attach
-            Service service = await TestNode.AttachAsync("auth:login", RpcBehaviour.Bind<ITest001>(new Test001(Guid.NewGuid())));
+            //Service service = await TestNode.AttachAsync("auth:login", RpcBehaviour.Bind<ITest001>(new Test001(Guid.NewGuid())));
 
-            service.Dispose();
+            //service.Dispose();
 
             await Task.Delay(50000);
         }

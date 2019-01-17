@@ -181,7 +181,7 @@ namespace Holon.Protocol
 
             try {
                 consumerTag = (string)await _ctx.AskWork(delegate () {
-                    return _channel.BasicConsume(name, autoAck, "", false, false, null, consumer);
+                    return _channel.BasicConsume(name, autoAck, "", false, exclusive, null, consumer);
                 }).ConfigureAwait(false);
             } catch (Exception) {
                 throw;

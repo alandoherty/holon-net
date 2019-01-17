@@ -791,8 +791,6 @@ namespace Holon
             // try and find broker endpoint
             if (endpoint == null && configuration.Namespaces.Length == 0)
                 throw new ArgumentNullException("The environment does not contain any namespaces");
-            else if (endpoint != null)
-                configuration.Namespaces = configuration.Namespaces.Concat(new NamespaceEndpoint[] { new NamespaceEndpoint("*", new Uri(endpoint)) }).ToArray();
 
             return CreateAsync(endpoint, configuration);
         }
