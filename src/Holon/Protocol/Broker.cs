@@ -174,7 +174,7 @@ namespace Holon.Protocol
             }).ConfigureAwait(false);
 
             // create consumer
-            ObservableConsumer consumer = new ObservableConsumer(_channel);
+            ObservableConsumer consumer = new ObservableConsumer(this);
 
             // consume queue
             string consumerTag = null;
@@ -234,11 +234,11 @@ namespace Holon.Protocol
                 OnReturned(new BrokerReturnedEventArgs(e.BasicProperties, e.Body, e.ReplyText));
             };
             _channel.ModelShutdown += delegate (object s, ShutdownEventArgs e) {
-                // dispose
-                Dispose();
-
                 // call event
                 OnShutdown(new BrokerShutdownEventArgs(e.ReplyText));
+
+                // dispose
+                Dispose();
             };
         }
         #endregion

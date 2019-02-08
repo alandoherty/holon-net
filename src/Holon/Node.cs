@@ -566,6 +566,24 @@ namespace Holon
         }
 
         /// <summary>
+        /// Detaches a service from the node, waiting for complete cancellation.
+        /// </summary>
+        /// <param name="service">The service.</param>
+        /// <returns></returns>
+        public async Task DetachAsync(Service service) {
+            // remove service
+            lock (_services) {
+                if (!_services.Contains(service))
+                    return;
+
+                // remove from list
+                _services.Remove(service);
+            }
+
+            await service.ShutdownAsync().ConfigureAwait(false);
+        }
+
+        /// <summary>
         /// Disposes the node and underlying services.
         /// </summary>
         public void Dispose() {

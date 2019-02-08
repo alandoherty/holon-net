@@ -111,6 +111,18 @@ namespace Holon.Protocol
         }
 
         /// <summary>
+        /// Cancels the broker queue.
+        /// </summary>
+        /// <returns></returns>
+        public Task CancelAsync() {
+            _consumer = null;
+            return _broker.Context.AskWork(() => {
+                _broker.Channel.BasicCancel(_consumerTag);
+                return null;
+            });
+        }
+
+        /// <summary>
         /// Disposes 
         /// </summary>
         public void Dispose() {

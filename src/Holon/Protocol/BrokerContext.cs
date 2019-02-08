@@ -25,7 +25,14 @@ namespace Holon.Protocol
         #endregion
 
         #region Properties
-
+        /// <summary>
+        /// Gets the connection.
+        /// </summary>
+        public IConnection Connection {
+            get {
+                return _connection;
+            }
+        }
         #endregion
 
         #region Methods

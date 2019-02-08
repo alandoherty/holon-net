@@ -15,17 +15,26 @@ namespace Holon.Protocol
     internal class ObservableConsumer : IBasicConsumer, IObservable<InboundMessage>
     {
         #region Fields
-        private IModel _channel;
+        private Broker _broker;
         private int _cancelled;
         private List<SubscribedObserver> _subscriptions = new List<SubscribedObserver>(1);
         #endregion
+
+        /// <summary>
+        /// Gets the underlying broker.
+        /// </summary>
+        public Broker Broker {
+            get {
+                return _broker;
+            }
+        }
 
         /// <summary>
         /// Gets the underlying channel.
         /// </summary>
         public IModel Model {
             get {
-                return _channel;
+                return _broker.Channel;
             }
         }
 
@@ -87,7 +96,7 @@ namespace Holon.Protocol
         public void HandleBasicDeliver(string consumerTag, ulong deliveryTag, bool redelivered, string exchange, string routingKey, IBasicProperties properties, byte[] body) {
             lock(_subscriptions) {
                 foreach (SubscribedObserver observer in _subscriptions)
-                    observer.Observer.OnNext(new InboundMessage(_channel, deliveryTag, redelivered, exchange, routingKey, properties, body));
+                    observer.Observer.OnNext(new InboundMessage(Model, deliveryTag, redelivered, exchange, routingKey, properties, body));
             }
         }
 
@@ -170,9 +179,9 @@ namespace Holon.Protocol
         /// <summary>
         /// Creates a new observable consumer.
         /// </summary>
-        /// <param name="channel">The channel.</param>
-        public ObservableConsumer(IModel channel) {
-            _channel = channel;
+        /// <param name="broker">The broker.</param>
+        public ObservableConsumer(Broker broker) {
+            _broker = broker;
         }
         #endregion
     }

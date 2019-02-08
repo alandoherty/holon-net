@@ -155,11 +155,22 @@ namespace Holon.Services
                 return;
 
             // dispose of queue
-            _queue.Unbind(_addr.Namespace, _addr.RoutingKey);
             _queue.Dispose();
 
             // detach from node
             _namespace.Node.Detach(this);
+        }
+
+        /// <summary>
+        /// Shutdown the service.
+        /// </summary>
+        /// <returns></returns>
+        internal async Task ShutdownAsync() {
+            // cancel
+            await _queue.CancelAsync().ConfigureAwait(false);
+
+            // dispose
+            Dispose();
         }
 
         /// <summary>
