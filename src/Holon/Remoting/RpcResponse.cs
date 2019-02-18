@@ -61,6 +61,7 @@ namespace Holon.Remoting
         /// <param name="type">The data type.</param>
         internal RpcResponse(object data, Type type) {
             _data = data;
+            _dataType = type;
             _error = null;
         }
 

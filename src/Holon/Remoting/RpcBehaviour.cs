@@ -228,7 +228,7 @@ namespace Holon.Remoting
                 // get result
                 object realRes = methodResult.GetType().GetTypeInfo().GetProperty("Result").GetValue(methodResult);
 
-                return new RpcResponse(realRes, operationMethod.ReturnType);
+                return new RpcResponse(realRes, operationMethod.ReturnType.GetGenericArguments()[0]);
             }
         }
 
