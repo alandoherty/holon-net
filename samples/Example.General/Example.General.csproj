@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -6,6 +6,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\Holon.Amqp\Holon.Amqp.csproj" />
+    <ProjectReference Include="..\..\src\Holon.Lambda\Holon.Lambda.csproj" />
     <ProjectReference Include="..\..\src\Holon\Holon.csproj" />
   </ItemGroup>
 

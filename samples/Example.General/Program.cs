@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Holon;
+using Holon.Amqp;
 using Holon.Events;
 using Holon.Metrics;
 using Holon.Remoting;
@@ -65,28 +66,23 @@ namespace Example.General
 
     class Program
     {
-        public static Node TestNode { get; set; }
-
-        static void Main(string[] args) => AsyncMain(args).Wait();
-       
-
-        static async Task AsyncMain(string[] args) {
-            // attach node
-            TestNode = await Node.CreateFromEnvironmentAsync(new NodeConfiguration() {
-                ThrowUnhandledExceptions = true
-            });
+        static async Task Main(string[] args) {
+            // build node
+            Node node = new NodeBuilder()
+                .AddAmqp()
+                .Build();
 
             // attach
             Service service = null;
             
             try {
-                service = await TestNode.AttachAsync("auth:login", ServiceType.Balanced, RpcBehaviour.Bind<ITest001>(new Test001(Guid.NewGuid())));
+                service = await node.AttachAsync("auth:login", ServiceType.Balanced, RpcBehaviour.Bind<ITest001>(new Test001(Guid.NewGuid())));
             } catch(Exception) {
                 Console.WriteLine();
             }
 
             // detaches the service
-            await TestNode.DetachAsync(service).ConfigureAwait(false);
+            await node.DetachAsync(service).ConfigureAwait(false);
 
             await Task.Delay(50000);
         }

@@ -11,7 +11,7 @@ namespace Holon.Tests
         public async Task EmitAndSubscribe()
         {
             // connect
-            await Node.CreateAsync("amqp://localhost");
+            //await Node.CreateAsync("amqp://localhost");
 
             // event completion
             TaskCompletionSource<Event> tcs = new TaskCompletionSource<Event>();

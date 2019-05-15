@@ -39,8 +39,6 @@ namespace Holon
 
         private Service _queryService;
 
-        private List<Namespace> _namespaces;
-
         internal static Dictionary<string, string> DefaultTags = new Dictionary<string, string>() {
             { "RPCVersion", RpcHeader.HEADER_VERSION },
             { "RPCSerializers", "pbuf,xml" }
@@ -172,12 +170,12 @@ namespace Holon
         /// <param name="namespace">The output namespace.</param>
         /// <returns>If the namespace was found.</returns>
         internal bool TryGetNamespace(string match, out Namespace @namespace) {
-            foreach(Namespace n in _namespaces) {
+            /*foreach(Namespace n in _namespaces) {
                 if (n.Match(match)) {
                     @namespace = n;
                     return true;
                 }
-            }
+            }*/
 
             @namespace = null;
             return false;
@@ -429,9 +427,9 @@ namespace Holon
         /// <returns></returns>
         internal async Task SetupAsync() {
             // setup all namespaces
-            Task[] setupTasks = _namespaces.Select(n => n.SetupAsync()).ToArray();
+            //Task[] setupTasks = _namespaces.Select(n => n.SetupAsync()).ToArray();
 
-            await Task.WhenAll(setupTasks);
+            //await Task.WhenAll(setupTasks);
 
             // setup service
             if (_queryService == null) {
@@ -751,69 +749,6 @@ namespace Holon
         }
         #endregion
 
-        #region Setup 
-        /// <summary>
-        /// Creates a new node on the provided endpoint.
-        /// </summary>
-        /// <param name="configuration">The configuration.</param>
-        /// <returns></returns>
-        public static async Task<Node> CreateAsync(NodeConfiguration configuration = default(NodeConfiguration)) {
-            // fill configuration
-            if (configuration == null)
-                configuration = new NodeConfiguration();
-
-            // create node
-            Node node = new Node(configuration);
-
-            // setup node
-            await node.SetupAsync();
-
-            return node;
-        }
-
-        /// <summary>
-        /// Creates a new node on the provided endpoint.
-        /// </summary>
-        /// <param name="amqpEndpoint">The broker endpoint.</param>
-        /// <param name="configuration">The configuration.</param>
-        /// <returns></returns>
-        public static Task<Node> CreateAsync(string amqpEndpoint, NodeConfiguration configuration = default(NodeConfiguration)) {
-            // fill configuration
-            if (configuration == null)
-                configuration = new NodeConfiguration();
-
-            // add broker
-            configuration.Namespaces = configuration.Namespaces.Concat(new NamespaceEndpoint[] { new NamespaceEndpoint("*", new Uri(amqpEndpoint)) }).ToArray();
-
-            return CreateAsync(configuration);
-        }
-
-        /// <summary>
-        /// Creates a new node on the provided endpoint.
-        /// </summary>
-        /// <param name="configuration">The broker endpoint.</param>
-        /// <returns></returns>
-        public static Task<Node> CreateFromEnvironmentAsync(NodeConfiguration configuration = default(NodeConfiguration)) {
-            // check environment
-            string nodeUuid = Environment.GetEnvironmentVariable("NODE_UUID");
-            string endpoint = Environment.GetEnvironmentVariable("BROKER_ENDPOINT");
-
-            // create configuration
-            if (configuration == null)
-                configuration = new NodeConfiguration();
-
-            // add node uuid
-            if (nodeUuid != null)
-                configuration.UUID = Guid.Parse(nodeUuid);
-
-            // try and find broker endpoint
-            if (endpoint == null && configuration.Namespaces.Length == 0)
-                throw new ArgumentNullException("The environment does not contain any namespaces");
-
-            return CreateAsync(endpoint, configuration);
-        }
-        #endregion
-
         #region Constructors
         /// <summary>
         /// Creates a new node.
@@ -829,10 +764,6 @@ namespace Holon
             _appVersion = configuration.ApplicationVersion;
             _uuid = configuration.UUID == Guid.Empty ? Guid.NewGuid() : configuration.UUID;
             _configuration = configuration;
-
-            // create namespaces
-            _namespaces = _configuration.Namespaces.Select(n => new Namespace(this, n.Name, n.ConnectionUri))
-                .ToList();
         }
         #endregion
     }

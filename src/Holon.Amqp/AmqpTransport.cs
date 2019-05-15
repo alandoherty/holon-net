@@ -2,7 +2,7 @@
 
 namespace Holon.Amqp
 {
-    public class Class1
+    public class AmqpTransport : Transport
     {
 
     }

@@ -35,9 +35,9 @@ namespace Holon.Metrics.Tracing
         }
 
         /// <summary>
-        /// Gets the behaviour which is handling the request.
+        /// Gets the service which is handling the request.
         /// </summary>
-        public ServiceBehaviour Behaviour { get; private set; }
+        public Service Service { get; private set; }
         #endregion
 
         #region Constructors
@@ -45,10 +45,10 @@ namespace Holon.Metrics.Tracing
         /// Creates a new trace begin event arguments.
         /// </summary>
         /// <param name="envelope">The envelope.</param>
-        /// <param name="behaviour">The behaviour.</param>
-        public TraceEventArgs(Envelope envelope, ServiceBehaviour behaviour) {
+        /// <param name="service">The service.</param>
+        public TraceEventArgs(Envelope envelope, Service service) {
             Envelope = envelope;
-            Behaviour = behaviour;
+            Service = service;
         }
         #endregion
     }

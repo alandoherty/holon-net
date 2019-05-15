@@ -295,13 +295,13 @@ namespace Holon.Services
             }
 
             // trace begin
-            _namespace.Node.OnTraceBegin(new TraceEventArgs(envelope, _behaviour));
+            _namespace.Node.OnTraceBegin(new TraceEventArgs(envelope, this));
 
             // actually run handler
             await _behaviour.HandleAsync(envelope).ConfigureAwait(false);
 
             // trace end
-            _namespace.Node.OnTraceEnd(new TraceEventArgs(envelope, _behaviour));
+            _namespace.Node.OnTraceEnd(new TraceEventArgs(envelope, this));
         }
 
         void IObserver<InboundMessage>.OnCompleted() {
