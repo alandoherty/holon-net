@@ -38,11 +38,6 @@ namespace Holon
         /// <returns>The responses.</returns>
         Task<Envelope[]> BroadcastAsync(Message message, TimeSpan timeout, CancellationToken cancellationToken = default(CancellationToken));
 
-        // BatchedProxy BatchedProxy(ServiceAddress address);
-        // BatchedProxy BatchedProxy(string address);
-        // BatchedProxy<IT> BatchedProxy<IT>(ServiceAddress address);
-        // BatchedProxy<IT> BatchedProxy<IT>(string address);
-
         /// <summary>
         /// Gets an RPC proxy for the provided interface.
         /// </summary>

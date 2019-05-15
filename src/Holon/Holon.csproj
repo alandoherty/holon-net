@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>netstandard1.6</TargetFramework>
@@ -11,10 +11,11 @@
     <RepositoryUrl>https://github.com/alandoherty/holon-net</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <AssemblyVersion>0.2.0.0</AssemblyVersion>
-    <PackageLicenseUrl>https://github.com/alandoherty/holon-net/blob/master/LICENSE</PackageLicenseUrl>
+    <PackageLicenseUrl></PackageLicenseUrl>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageIconUrl>https://s3-eu-west-1.amazonaws.com/assets.alandoherty.co.uk/github/holon-net-nuget.png</PackageIconUrl>
     <FileVersion>0.2.0.0</FileVersion>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -36,7 +37,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Endpoints\" />
+    <None Include="..\..\LICENSE">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+    </None>
   </ItemGroup>
 
 </Project>

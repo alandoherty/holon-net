@@ -23,7 +23,7 @@ using ProtoBuf.Meta;
 namespace Holon
 {
     /// <summary>
-    /// Represents an application node.
+    /// Represents an application node, usually a single module of your system. This is the primary entry point to send messages or attach services.
     /// </summary>
     public sealed class Node : IDisposable
     {

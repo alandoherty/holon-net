@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.27703.2035
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.28803.352
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Holon", "src\Holon\Holon.csproj", "{D7206F8E-3B85-450D-8BAB-8D7F4617000E}"
 EndProject
@@ -14,9 +14,13 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		README.md = README.md
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Holon.Tests", "tests\Holon.Tests\Holon.Tests.csproj", "{5C39FAAB-A41C-4573-AF95-F5FC68033CF8}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Holon.Tests", "tests\Holon.Tests\Holon.Tests.csproj", "{5C39FAAB-A41C-4573-AF95-F5FC68033CF8}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{43A50FE7-E505-4B15-AD9A-2BCD61E79889}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Holon.Lambda", "src\Holon.Lambda\Holon.Lambda.csproj", "{9D0F292B-AE46-4AEA-9886-E73B618CBBC2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Holon.Amqp", "src\Holon.Amqp\Holon.Amqp.csproj", "{3B879371-54BB-4C0B-987F-B3C5A198769F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -36,6 +40,14 @@ Global
 		{5C39FAAB-A41C-4573-AF95-F5FC68033CF8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5C39FAAB-A41C-4573-AF95-F5FC68033CF8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5C39FAAB-A41C-4573-AF95-F5FC68033CF8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9D0F292B-AE46-4AEA-9886-E73B618CBBC2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9D0F292B-AE46-4AEA-9886-E73B618CBBC2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9D0F292B-AE46-4AEA-9886-E73B618CBBC2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9D0F292B-AE46-4AEA-9886-E73B618CBBC2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3B879371-54BB-4C0B-987F-B3C5A198769F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3B879371-54BB-4C0B-987F-B3C5A198769F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3B879371-54BB-4C0B-987F-B3C5A198769F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3B879371-54BB-4C0B-987F-B3C5A198769F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
