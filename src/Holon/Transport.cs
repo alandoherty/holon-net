@@ -9,6 +9,7 @@ namespace Holon
     /// </summary>
     public abstract class Transport
     {
+        #region Properties
         /// <summary>
         /// Gets if this transport supports emitting events.
         /// </summary>
@@ -53,5 +54,6 @@ namespace Holon
                 return false;
             }
         }
+        #endregion
     }
 }

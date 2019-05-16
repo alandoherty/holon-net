@@ -6,8 +6,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Holon.Amqp\Holon.Amqp.csproj" />
-    <ProjectReference Include="..\..\src\Holon.Lambda\Holon.Lambda.csproj" />
+    <ProjectReference Include="..\..\src\Holon.Transports.Amqp\Holon.Transports.Amqp.csproj" />
+    <ProjectReference Include="..\..\src\Holon.Transports.Lambda\Holon.Transports.Lambda.csproj" />
     <ProjectReference Include="..\..\src\Holon\Holon.csproj" />
   </ItemGroup>
 
