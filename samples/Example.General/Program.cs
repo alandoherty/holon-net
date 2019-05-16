@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading;
@@ -14,6 +15,7 @@ using Holon.Remoting;
 using Holon.Remoting.Serializers;
 using Holon.Security;
 using Holon.Services;
+using Holon.Transports;
 using ProtoBuf;
 
 namespace Example.General
@@ -68,9 +70,16 @@ namespace Example.General
     {
         static async Task Main(string[] args) {
             // build node
-            Node node = new NodeBuilder()
-                .AddAmqp()
-                .Build();
+            NodeBuilder nodeBuilder = new NodeBuilder()
+                .WithApplicationId("test")
+                .AddVirtual()
+                .All<VirtualTransport>();
+
+            Node node = nodeBuilder.Build();
+            node.Wow();
+
+            // wait forever
+            await Task.Delay(Timeout.InfiniteTimeSpan);
 
             // attach
             Service service = null;

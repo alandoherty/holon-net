@@ -142,6 +142,19 @@ namespace Holon.Services
             if (!InternalTryParse(addr))
                 throw new FormatException("The service address format is invalid");
         }
+
+        /// <summary>
+        /// Creates a new service address with the provided components.
+        /// </summary>
+        /// <param name="namespace">The namespace.</param>
+        /// <param name="routingKey">The routing key.</param>
+        public ServiceAddress(string @namespace, string routingKey)
+        {
+            if (@namespace.IndexOf(':') != -1)
+                throw new FormatException("The namespace format is invalid");
+
+            _addr = $"{@namespace}:{routingKey}";
+        }
         #endregion
     }
 }

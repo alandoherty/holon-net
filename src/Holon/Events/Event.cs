@@ -14,56 +14,61 @@ namespace Holon.Events
     /// </summary>
     public class Event
     {
+        #region Constants
+        private const string HeaderId = "X-Holon-ID";
+        #endregion
+
         #region Fields
-        private string _name;
-        private string _resource;
-        private string _namespace;
-        private byte[] _data;
+        private EventAddress _addr;
+        private object _data;
         private DateTimeOffset _timestamp;
-        private string _id;
+        private IDictionary<string, string> _headers;
         #endregion
 
         #region Properties
         /// <summary>
-        /// Gets the ID.
+        /// Gets the optional identifier.
         /// </summary>
-        public string ID {
+        public string Id {
             get {
-                return _id;
+                if (_headers.TryGetValue(HeaderId, out string val))
+                    return val;
+                else
+                    return null;
             }
         }
 
         /// <summary>
-        /// Gets the name.
+        /// Gets if this event contains an ID.
         /// </summary>
-        public string Name {
+        public bool HasId {
             get {
-                return _name;
+                return _headers.ContainsKey(HeaderId);
             }
         }
 
         /// <summary>
-        /// Gets the namespace.
+        /// Gets the headers.
         /// </summary>
-        public string Namespace {
+        public IReadOnlyDictionary<string, string> Headers {
             get {
-                return _namespace;
+                return (IReadOnlyDictionary<string, string>)_headers;
             }
         }
 
         /// <summary>
-        /// Gets the resource.
+        /// Gets the address.
         /// </summary>
-        public string Resource {
+        public EventAddress Address {
             get {
-                return _resource;
+                return _addr;
             }
         }
 
         /// <summary>
         /// Gets the raw payload.
         /// </summary>
-        public byte[] Data {
+        public object Data {
             get {
                 return _data;
             }
@@ -80,90 +85,18 @@ namespace Holon.Events
         #endregion
 
         #region Methods
-        /// <summary>
-        /// Serializes the data from a .NET type.
-        /// </summary>
-        /// <param name="val">The value.</param>
-        public void Serialize(object val) {
-            TypeInfo typeInfo = val.GetType().GetTypeInfo();
-
-            if (typeInfo.GetCustomAttribute<ProtoContractAttribute>() != null) {
-                using (MemoryStream ms = new MemoryStream()) {
-                    RuntimeTypeModel.Default.Serialize(ms, val);
-                    _data = ms.ToArray();
-                }
-            } else {
-                _data = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(val));
-            }
-        }
-
-        /// <summary>
-        /// Serializes the data from a .NET type.
-        /// </summary>
-        /// <typeparam name="T">The type.</typeparam>
-        /// <param name="val">The value.</param>
-        public void Serialize<T>(T val) {
-            TypeInfo typeInfo = val.GetType().GetTypeInfo();
-
-            if (typeInfo.GetCustomAttribute<ProtoContractAttribute>() != null) {
-                using (MemoryStream ms = new MemoryStream()) {
-                    Serializer.Serialize(ms, val);
-                    _data = ms.ToArray();
-                }
-            } else {
-                _data = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(val));
-            }
-        }
-
-        /// <summary>
-        /// Deserializes the data as a .NET type.
-        /// </summary>
-        /// <param name="type">The type.</param>
-        /// <returns></returns>
-        public object Deserialize(Type type) {
-            TypeInfo typeInfo = type.GetTypeInfo();
-
-            if (typeInfo.GetCustomAttribute<ProtoContractAttribute>() != null) {
-                using (MemoryStream ms = new MemoryStream(Data)) {
-                    return Serializer.Deserialize(type, ms);
-                }
-            } else {
-                return JsonConvert.DeserializeObject(Encoding.UTF8.GetString(Data), type);
-            }
-        }
-        
-        /// <summary>
-        /// Deserializes the data as a .NET type.
-        /// </summary>
-        /// <typeparam name="T">The type.</typeparam>
-        /// <returns>The deserialized object.</returns>
-        public T Deserialize<T>() {
-            TypeInfo typeInfo = typeof(T).GetTypeInfo();
-
-            if (typeInfo.GetCustomAttribute<ProtoContractAttribute>() != null) {
-                using (MemoryStream ms = new MemoryStream(Data)) {
-                    return Serializer.Deserialize<T>(ms);
-                }
-            } else {
-                return JsonConvert.DeserializeObject<T>(Encoding.UTF8.GetString(Data));
-            }
-        }
         #endregion
 
         #region Constructors
         /// <summary>
         /// Creates a new event.
         /// </summary>
-        /// <param name="id">The ID.</param>
-        /// <param name="namespace">The namespace.</param>
-        /// <param name="resource">The resource.</param>
-        /// <param name="name">The event name.</param>
+        /// <param name="addr">The event address.</param>
+        /// <param name="headers">The headers.</param>
         /// <param name="data">The data.</param>
-        internal Event(string id, string @namespace, string resource, string name, byte[] data = null) {
-            _id = id;
-            _resource = resource;
-            _namespace = @namespace;
-            _name = name;
+        public Event(EventAddress addr, IDictionary<string, string> headers, object data) {
+            _addr = addr;
+            _headers = headers;
             _data = data;
             _timestamp = DateTime.UtcNow;
         }

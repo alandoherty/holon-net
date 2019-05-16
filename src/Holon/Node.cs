@@ -37,6 +37,9 @@ namespace Holon
         private string _appVersion;
         private List<Service> _services = new List<Service>();
 
+        internal List<Transport> _transports = new List<Transport>();
+        internal List<RoutingRule> _rules = new List<RoutingRule>();
+
         private Service _queryService;
 
         internal static Dictionary<string, string> DefaultTags = new Dictionary<string, string>() {
@@ -146,6 +149,24 @@ namespace Holon
                 lock (_services) {
                     return _services.ToArray();
                 }
+            }
+        }
+
+        /// <summary>
+        /// Gets the rules.
+        /// </summary>
+        public IEnumerable<RoutingRule> Rules {
+            get {
+                return _rules;
+            }
+        }
+
+        /// <summary>
+        /// Gets all the transports.
+        /// </summary>
+        public IEnumerable<Transport> Transports {
+            get {
+                return _transports;
             }
         }
         #endregion
@@ -362,6 +383,36 @@ namespace Holon
         #endregion
 
         #region Other Methods
+        class observer : IObserver<Event>
+        {
+            public void OnCompleted()
+            {
+                Console.WriteLine("[Event] OnCompleted");
+            }
+
+            public void OnError(Exception error)
+            {
+            }
+
+            public void OnNext(Event value)
+            {
+                Console.WriteLine($"[Event] {value.Address} : {value.Data.ToString()}");
+            }
+        }
+
+        public async void Wow()
+        {
+            Transport t = _transports.First();
+
+            var sub = await t.SubscribeAsync(new EventAddress("device:wow.*"));
+            sub.AsObservable().Subscribe(new observer());
+
+            await t.EmitAsync(new Event[]
+            {
+                new Event(new EventAddress("device:wow.w"), new Dictionary<string, string>(StringComparer.CurrentCultureIgnoreCase), "wow")
+            });
+        }
+
         /*
         /// <summary>
         /// Reconnects the underlying broker.

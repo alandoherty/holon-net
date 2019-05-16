@@ -1,6 +1,8 @@
-﻿using System;
+﻿using Holon.Events;
+using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace Holon
 {
@@ -55,5 +57,33 @@ namespace Holon
             }
         }
         #endregion
+
+        /// <summary>
+        /// Emits an event on the provided address.
+        /// </summary>
+        /// <param name="events">The events.</param>
+        /// <exception cref="NotSupportedException">If the operation is not supported.</exception>
+        /// <returns></returns>
+        internal protected virtual Task EmitAsync(IEnumerable<Event> events)
+        {
+            if (CanEmit)
+                throw new NotImplementedException();
+            else
+                throw new NotSupportedException("This transport does not support emitting");
+        }
+
+        /// <summary>
+        /// Subscribes to events matching the provided name.
+        /// </summary>
+        /// <param name="addr">The event address.</param>
+        /// <exception cref="NotSupportedException">If the operation is not supported.</exception>
+        /// <returns>The subscription.</returns>
+        internal protected virtual Task<IEventSubscription> SubscribeAsync(EventAddress addr)
+        {
+            if (CanSubscribe)
+                throw new NotImplementedException();
+            else
+                throw new NotSupportedException("This transport does not support subscriptions");
+        }
     }
 }

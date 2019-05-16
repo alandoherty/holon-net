@@ -31,19 +31,21 @@ namespace Holon.Events.Serializers
             using (MemoryStream ms = new MemoryStream(body)) {
                 EventMsg msg = Serializer.Deserialize<EventMsg>(ms);
 
-                return new Event(msg.ID, msg.Namespace, msg.Resource, msg.Name, msg.Data);
+                ///TODO: update
+                return null;
+                //return new Event(msg.ID, msg.Namespace, msg.Resource, msg.Name, msg.Data);
             }
         }
 
         public byte[] SerializeEvent(Event e) {
             using (MemoryStream ms = new MemoryStream()) {
                 EventMsg eventMsg = new EventMsg();
-                eventMsg.Name = e.Name;
+                eventMsg.Name = e.Address.Name;
                 eventMsg.Type = "serialized";
-                eventMsg.Data = e.Data;
-                eventMsg.Resource = e.Resource;
-                eventMsg.Namespace = e.Namespace;
-                eventMsg.ID = e.ID;
+                //eventMsg.Data = e.Id;
+                eventMsg.Resource = e.Address.Resource;
+                eventMsg.Namespace = e.Address.Namespace;
+                eventMsg.ID = e.Id;
                 Serializer.Serialize(ms, eventMsg);
                 return ms.ToArray();
             }

@@ -443,8 +443,8 @@ namespace Holon
                 await DeclareEventAsync(addr).ConfigureAwait(false);
 
             // serialize data payload
-            Event e = new Event(id ?? Guid.NewGuid().ToString(), addr.Namespace, addr.Resource, addr.Name);
-            e.Serialize(data);
+            Event e = null;// new Event(id ?? Guid.NewGuid().ToString(), addr.Namespace, addr.Resource, addr.Name);
+            //e.Serialize(data);
 
             // serialize
             ProtobufEventSerializer serializer = new ProtobufEventSerializer();

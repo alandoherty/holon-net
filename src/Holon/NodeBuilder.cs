@@ -1,25 +1,19 @@
 ﻿using Holon.Services;
+using Holon.Transports;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace Holon
 {
-    /// <summary>
-    /// Defines a delegate which selects a transport based off the wildcard.
-    /// </summary>
-    /// <param name="addr">The address.</param>
-    /// <param name="transports">The configured transports.</param>
-    /// <param name="transport">The output transport.</param>
-    /// <returns>If a transport was found.</returns>
-    public delegate bool TransportBinding(ServiceAddress addr, IEnumerable<Transport> transports, out Transport transport);
-
     /// <summary>
     /// Provides functionality to create <see cref="Node"/> objects with a fluid API.
     /// </summary>
     public class NodeBuilder
     {
+        private List<RoutingRule> _rules = new List<RoutingRule>();
         private List<Transport> _transports = new List<Transport>();
         private NodeConfiguration _configuration = new NodeConfiguration() {
             ApplicationId = "holon-app",
@@ -28,13 +22,59 @@ namespace Holon
 
         #region Methods
         /// <summary>
-        /// Adds a static binding to this node, bindings explain the link between a <see cref="Transport"/> and a namespace.
+        /// Adds a routing rule for this node.
         /// </summary>
-        /// <param name="binding">The binding.</param>
+        /// <param name="rule">The rule.</param>
         /// <returns>The node builder.</returns>
-        public NodeBuilder AddBinding(TransportBinding binding)
+        public NodeBuilder Rule(RoutingRule rule)
         {
+            _rules.Add(rule);
             return this;
+        }
+
+        /// <summary>
+        /// Adds a catch all routing rule. There must be exactly one of the transport registered.
+        /// </summary>
+        /// <typeparam name="TTransport">The transport type.</typeparam>
+        /// <returns>The node builder.</returns>
+        public NodeBuilder All<TTransport>()
+            where TTransport : Transport
+        {
+            Transport transport = _transports.Single(t => t is TTransport);
+            return Rule(new FunctionRule(s => new RoutingResult(transport)));
+        }
+
+        /// <summary>
+        /// Adds a regex routing rule for the specified transport. There must be exactly one of the transport registered.
+        /// </summary>
+        /// <typeparam name="TTransport">The transport type.</typeparam>
+        /// <param name="regex">The regex.</param>
+        /// <returns>The node builder.</returns>
+        public NodeBuilder Rule<TTransport>(Regex regex)
+            where TTransport : Transport
+        {
+            return Rule(new RegexRule(regex, _transports.Single(t => t is TTransport)));
+        }
+
+        /// <summary>
+        /// Adds a regex routing rule for this node.
+        /// </summary>
+        /// <param name="regex">The regex</param>
+        /// <param name="transport">The transport.</param>
+        /// <returns>The node builder.</returns>
+        public NodeBuilder Rule(Regex regex, Transport transport)
+        {
+            return Rule(new RegexRule(regex, transport));
+        }
+
+        /// <summary>
+        /// Adds a regex routing rule for this node.
+        /// </summary>
+        /// <param name="func">The function.</param>
+        /// <returns>The node builder.</returns>
+        public NodeBuilder Rule(Func<ServiceAddress, RoutingResult> func)
+        {
+            return Rule(new FunctionRule(func));
         }
 
         /// <summary>
@@ -43,7 +83,7 @@ namespace Holon
         /// <param name="configuration">The configuration.</param>
         /// <exception cref="ArgumentNullException">If the configuration argument is null.</exception>
         /// <returns>The node builder.</returns>
-        public NodeBuilder AddConfiguration(NodeConfiguration configuration)
+        public NodeBuilder ApplyConfiguration(NodeConfiguration configuration)
         {
             if (_configuration == null)
                 throw new ArgumentNullException(nameof(configuration), "The configuration cannot be null");
@@ -57,7 +97,7 @@ namespace Holon
         /// </summary>
         /// <param name="applicationId">The application ID.</param>
         /// <returns>The node builder.</returns>
-        public NodeBuilder AddApplicationId(string applicationId)
+        public NodeBuilder WithApplicationId(string applicationId)
         {
             _configuration.ApplicationId = applicationId;
             return this;
@@ -68,7 +108,7 @@ namespace Holon
         /// </summary>
         /// <param name="applicationVersion">The application version.</param>
         /// <returns>The node builder.</returns>
-        public NodeBuilder AddApplicationVersion(string applicationVersion)
+        public NodeBuilder WithApplicationVersion(string applicationVersion)
         {
             _configuration.ApplicationVersion = applicationVersion;
             return this;
@@ -78,9 +118,39 @@ namespace Holon
         /// Adds the specified transport to the node, you may add multiple of the same type.
         /// </summary>
         /// <param name="transport">The transport.</param>
-        /// <returns></returns>
-        public NodeBuilder AddTransport(Transport transport)
+        /// <returns>The node builder.</returns>
+        public NodeBuilder Transport(Transport transport)
         {
+            _transports.Add(transport);
+            return this;
+        }
+
+        /// <summary>
+        /// Adds a virtual transport to the node.
+        /// </summary>
+        /// <param name="configuration">The optional configuration.</param>
+        /// <returns>The node builder.</returns>
+        public NodeBuilder AddVirtual(Action<NodeBuilder, VirtualTransport> configuration = null)
+        {
+            VirtualTransport virtualTransport = new VirtualTransport();
+
+            // add configuration if present
+            configuration?.Invoke(this, virtualTransport);
+
+            return Transport(virtualTransport);
+        }
+
+        /// <summary>
+        /// Adds the specified transport to the node, you may add multiple of the same type.
+        /// </summary>
+        /// <param name="transport">The transport.</param>
+        /// <returns>The node builder.</returns>
+        public NodeBuilder Transport<TTransport>(Transport transport)
+            where TTransport : Transport, new()
+        {
+            if (_transports.Any(t => t is TTransport))
+                throw new InvalidOperationException("You can not add two of the same transport via activation");
+
             _transports.Add(transport);
             return this;
         }
@@ -93,6 +163,8 @@ namespace Holon
         {
             // create node
             Node node = new Node(_configuration);
+            node._rules = _rules;
+            node._transports = _transports;
 
             return node;
         }

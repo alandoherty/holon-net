@@ -11,7 +11,7 @@ namespace Holon.Lambda
     {
         public static NodeBuilder AddLambda(this NodeBuilder nodeBuilder)
         {
-            return nodeBuilder.AddTransport(new LambdaTransport());
+            return nodeBuilder.Transport(new LambdaTransport());
         }
     }
 }

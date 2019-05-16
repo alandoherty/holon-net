@@ -14,7 +14,7 @@ namespace Holon.Events
     /// <summary>
     /// Represents a subscription to an event address for a specific type.
     /// </summary>
-    public class EventSubscription : IDisposable
+    public class EventSubscription : IEventSubscription
     {
         #region Fields
         private Namespace _namespace;
