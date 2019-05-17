@@ -1,4 +1,5 @@
-﻿using Holon.Protocol;
+﻿using Holon.Events;
+using Holon.Transports.Amqp.Protocol;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -9,15 +10,15 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
-namespace Holon.Events
+namespace Holon.Transports.Amqp
 {
     /// <summary>
     /// Represents a subscription to an event address for a specific type.
     /// </summary>
-    public class EventSubscription : IEventSubscription
+    class AmqpEventSubscription : IEventSubscription
     {
         #region Fields
-        private Namespace _namespace;
+        private Transport _transport;
         private BrokerQueue _queue;
         private int _disposed;
         private EventAddress _address;
@@ -42,14 +43,14 @@ namespace Holon.Events
         /// <returns>The event.</returns>
         private Event ProcessMessage(InboundMessage message) {
             // read envelope
-            Envelope envelope = new Envelope(message, _namespace);
+            Envelope envelope = new Envelope(message, transport);
             
             // check for header
-            if (!envelope.Headers.ContainsKey(EventHeader.HEADER_NAME))
+            if (!envelope.Headers.ContainsKey(AmqpEventHeader.HEADER_NAME))
                 throw new InvalidDataException("Invalid event header");
 
             // read header
-            EventHeader header = new EventHeader(Encoding.UTF8.GetString(envelope.Headers[EventHeader.HEADER_NAME] as byte[]));
+            AmqpEventHeader header = new AmqpEventHeader(Encoding.UTF8.GetString(envelope.Headers[AmqpEventHeader.HEADER_NAME] as byte[]));
 
             // validate version
             if (header.Version != "1.1")
@@ -92,7 +93,7 @@ namespace Holon.Events
         /// </summary>
         class EventObservable : IObservable<Event>
         {
-            private EventSubscription _sub;
+            private AmqpEventSubscription _sub;
             private IObservable<InboundMessage> _observable;
 
             public IDisposable Subscribe(IObserver<Event> observer) {
@@ -103,7 +104,7 @@ namespace Holon.Events
             /// Creates an observable event producer.
             /// </summary>
             /// <param name="sub">The subscription.</param>
-            public EventObservable(EventSubscription sub) {
+            public EventObservable(AmqpEventSubscription sub) {
                 _sub = sub;
                 _observable = sub._queue.AsObservable();
             }
@@ -112,9 +113,9 @@ namespace Holon.Events
         class EventObserver : IObserver<InboundMessage>
         {
             private IObserver<Event> _observer;
-            private EventSubscription _sub;
+            private AmqpEventSubscription _sub;
 
-            public EventObserver(EventSubscription sub, IObserver<Event> observer) {
+            public EventObserver(AmqpEventSubscription sub, IObserver<Event> observer) {
                 _sub = sub;
                 _observer = observer;
             }
@@ -138,11 +139,11 @@ namespace Holon.Events
         /// Creates a new subscription.
         /// </summary>
         /// <param name="addr">The address.</param>
-        /// <param name="namespace">The namespace.</param>
+        /// <param name="transport">The transport.</param>
         /// <param name="queue">The queue.</param>
-        internal EventSubscription(EventAddress addr, Namespace @namespace, BrokerQueue queue) {
+        internal AmqpEventSubscription(EventAddress addr, Transport transport, BrokerQueue queue) {
             _queue = queue;
-            _namespace = @namespace;
+            _transport = transport;
             _address = addr;
         }
         #endregion

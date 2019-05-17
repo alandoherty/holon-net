@@ -1,5 +1,4 @@
 ﻿using Holon.Metrics.Tracing;
-using Holon.Protocol;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -14,15 +13,14 @@ namespace Holon.Services
     /// <summary>
     /// Represents an service.
     /// </summary>
-    public sealed class Service : IDisposable, IObserver<InboundMessage>
+    public sealed class Service : IDisposable, IObserver<Envelope>
     {
         #region Fields
-        private Namespace _namespace;
         private ServiceAddress _addr;
-        private Broker _broker;
-        private BrokerQueue _queue;
         private ServiceBehaviour _behaviour;
         private ServiceConfiguration _configuration;
+
+        private Transport _transport;
 
         private DateTimeOffset _timeSetup;
         private int _requestsPending = 0;
@@ -108,20 +106,11 @@ namespace Holon.Services
         }
 
         /// <summary>
-        /// Gets the broker.
-        /// </summary>
-        internal Broker Broker {
-            get {
-                return _broker;
-            }
-        }
-
-        /// <summary>
         /// Gets the namespace.
         /// </summary>
-        internal Namespace Namespace {
+        internal Transport Transport {
             get {
-                return _namespace;
+                return _transport;
             }
         }
         #endregion
@@ -304,15 +293,13 @@ namespace Holon.Services
             _namespace.Node.OnTraceEnd(new TraceEventArgs(envelope, this));
         }
 
-        void IObserver<InboundMessage>.OnCompleted() {
+        void IObserver<Envelope>.OnCompleted() {
         }
 
-        void IObserver<InboundMessage>.OnError(Exception error) {
+        void IObserver<Envelope>.OnError(Exception error) {
         }
 
-        async void IObserver<InboundMessage>.OnNext(InboundMessage message) {
-            Envelope envelope = new Envelope(message, _namespace);
-
+        async void IObserver<Envelope>.OnNext(Envelope envelope) {
             // wait for a free request slot, this ensures ServiceConfiguration.MaxConcurrency is kept to
             await _concurrencySlim.WaitAsync().ConfigureAwait(false);
 
@@ -359,14 +346,14 @@ namespace Holon.Services
         #endregion
 
         #region Constructors
-        internal Service(Namespace @namespace, ServiceAddress addr, ServiceBehaviour behaviour, ServiceConfiguration configuration) {
+        internal Service(Transport transport, ServiceAddress addr, ServiceBehaviour behaviour, ServiceConfiguration configuration) {
             if (configuration == null)
                 throw new ArgumentNullException(nameof(configuration));
             
             _behaviour = behaviour ?? throw new ArgumentNullException(nameof(behaviour));
             _addr = addr;
             _configuration = configuration;
-            _namespace = @namespace ?? throw new ArgumentNullException(nameof(@namespace));
+            _transport = transport;
         }
         #endregion
     }

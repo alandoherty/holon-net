@@ -7,28 +7,9 @@ namespace Holon.Events
     /// <summary>
     /// Represents an event address.
     /// </summary>
-    public class EventAddress : IEquatable<EventAddress>
+    public class EventAddress : Address, IEquatable<EventAddress>
     {
-        #region Fields
-        private int _namespaceLength;
-        private int _resourceIndex;
-        private int _resourceLength;
-        private int _nameIndex;
-        private int _nameLength;
-
-        private string _addr;
-        #endregion
-
         #region Properties
-        /// <summary>
-        /// Gets the namespace.
-        /// </summary>
-        public string Namespace {
-            get {
-                return _addr.Substring(0, _namespaceLength);
-            }
-        }
-
         /// <summary>
         /// Gets the resource.
         /// </summary>
@@ -158,10 +139,8 @@ namespace Holon.Events
         /// Creates a new event address with the provided string representation.
         /// </summary>
         /// <param name="addr">The event address.</param>
-        public EventAddress(string addr) {
-            if (!InternalTryParse(addr))
-                throw new FormatException("The event address format is invalid");
-        }
+        public EventAddress(string addr)
+            : base(addr) { }
 
         /// <summary>
         /// Creates a new event address with the provided string representation.
@@ -169,10 +148,8 @@ namespace Holon.Events
         /// <param name="namespace">The namespace.</param>
         /// <param name="resource">The resource name..</param>
         /// <param name="name">The event name.</param>
-        public EventAddress(string @namespace, string resource, string name) {
-            if (!InternalTryParse($"{@namespace}:{resource}.{name}"))
-                throw new FormatException("The event address format is invalid");
-        }
+        public EventAddress(string @namespace, string resource, string name)
+            : base(@namespace, $"{resource}.{name}") { }
         #endregion
     }
 }

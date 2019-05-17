@@ -6,7 +6,6 @@ using System.Text;
 using System.Xml.Serialization;
 using Holon.Services;
 using ProtoBuf;
-using Holon.Protocol;
 using System.Threading.Tasks;
 using Holon.Metrics.Tracing;
 
@@ -18,22 +17,13 @@ namespace Holon
     public sealed class Envelope
     {
         #region Fields
-        private Namespace _namespace;
+        private Transport _transport;
         private InboundMessage _msg;
         private byte[] _body;
         private IReplyChannel _channel;
         #endregion
 
         #region Properties
-        /// <summary>
-        /// Gets the contents of the envelope.
-        /// </summary>
-        internal InboundMessage Message {
-            get {
-                return _msg;
-            }
-        }
-        
         /// <summary>
         /// Gets the target address.
         /// </summary>
@@ -55,9 +45,9 @@ namespace Holon
         /// <summary>
         /// Gets the namespace the messaged was received on.
         /// </summary>
-        internal Namespace Namespace {
+        internal Transport Transport {
             get {
-                return _namespace;
+                return _transport;
             }
         }
 

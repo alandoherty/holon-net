@@ -7,7 +7,7 @@ using System.Threading;
 using Holon.Services;
 using System.Linq;
 
-namespace Holon.Protocol
+namespace Holon.Transports.Amqp.Protocol
 {
     /// <summary>
     /// Represents a basic consumer designed for use with asyncronous TPL code.

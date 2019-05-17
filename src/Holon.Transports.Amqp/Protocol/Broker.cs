@@ -8,7 +8,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
 
-namespace Holon.Protocol
+namespace Holon.Transports.Amqp.Protocol
 {
     /// <summary>
     /// Represents a broker attached to the messaging system.

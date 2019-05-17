@@ -7,7 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
-namespace Holon.Protocol
+namespace Holon.Transports.Amqp.Protocol
 {
     /// <summary>
     /// Represents a broker connection.

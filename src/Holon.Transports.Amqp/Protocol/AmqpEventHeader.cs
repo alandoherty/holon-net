@@ -2,12 +2,12 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Holon.Events
+namespace Holon.Transports.Amqp.Protocol
 {
     /// <summary>
     /// Represents an event header.
     /// </summary>
-    internal class EventHeader
+    internal class AmqpEventHeader
     {
         #region Constants
         internal const string HEADER_NAME = "X-Event";
@@ -81,7 +81,7 @@ namespace Holon.Events
         /// Creates a new header parsed from the provided input.
         /// </summary>
         /// <param name="input">The input.</param>
-        public EventHeader(string input) {
+        public AmqpEventHeader(string input) {
             InternalParse(input);
         }
 
@@ -90,7 +90,7 @@ namespace Holon.Events
         /// </summary>
         /// <param name="version">The version.</param>
         /// <param name="serializer">The serializer.</param>
-        public EventHeader(string version, string serializer) {
+        public AmqpEventHeader(string version, string serializer) {
             _version = version;
             _serializer = serializer;
         }

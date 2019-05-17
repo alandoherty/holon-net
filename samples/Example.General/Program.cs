@@ -8,7 +8,6 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Holon;
-using Holon.Amqp;
 using Holon.Events;
 using Holon.Metrics;
 using Holon.Remoting;
@@ -16,6 +15,7 @@ using Holon.Remoting.Serializers;
 using Holon.Security;
 using Holon.Services;
 using Holon.Transports;
+using Holon.Transports.Amqp;
 using ProtoBuf;
 
 namespace Example.General
@@ -73,6 +73,7 @@ namespace Example.General
             NodeBuilder nodeBuilder = new NodeBuilder()
                 .WithApplicationId("test")
                 .AddVirtual()
+                .AddAmqp(new Uri("amqp://localhost"))
                 .All<VirtualTransport>();
 
             Node node = nodeBuilder.Build();

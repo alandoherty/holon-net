@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Holon.Amqp
+namespace Holon.Transports.Amqp
 {
     /// <summary>
     /// Extends the <see cref="NodeBuilder"/> providing convinence methods to add AMQP support.

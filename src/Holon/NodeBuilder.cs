@@ -166,6 +166,15 @@ namespace Holon
             node._rules = _rules;
             node._transports = _transports;
 
+            // assign transports to the node
+            foreach(Transport transport in node._transports)
+            {
+                if (transport.Node != null)
+                    throw new InvalidOperationException("The transport is already attached to another node");
+
+                transport.Node = node;
+            }
+
             return node;
         }
         #endregion

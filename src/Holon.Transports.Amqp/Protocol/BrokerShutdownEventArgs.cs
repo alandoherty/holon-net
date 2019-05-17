@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Holon.Protocol
+namespace Holon.Transports.Amqp.Protocol
 {
     /// <summary>
     /// Provides data for a Broker.Shutdown event.

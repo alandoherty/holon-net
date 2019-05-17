@@ -11,6 +11,10 @@ namespace Holon
     /// </summary>
     public abstract class Transport
     {
+        #region Fields
+        private Node _node;
+        #endregion
+
         #region Properties
         /// <summary>
         /// Gets if this transport supports emitting events.
@@ -54,6 +58,17 @@ namespace Holon
         public virtual bool CanAttach {
             get {
                 return false;
+            }
+        }
+
+        /// <summary>
+        /// Gets the node this transport is attached to.
+        /// </summary>
+        public Node Node {
+            get {
+                return _node;
+            } internal set {
+                _node = value;
             }
         }
         #endregion

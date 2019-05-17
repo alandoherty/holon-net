@@ -15,30 +15,45 @@ namespace Holon.Transports
         private Dictionary<Regex, VirtualEventSubscription> _subscriptions = new Dictionary<Regex, VirtualEventSubscription>();
 
         #region Capabilities
+        /// <summary>
+        /// Gets if this transport supports emitting events.
+        /// </summary>
         public override bool CanEmit {
             get {
                 return true;
             }
         }
 
+        /// <summary>
+        /// Gets if this transport supports subscribing to events.
+        /// </summary>
         public override bool CanSubscribe {
             get {
                 return true;
             }
         }
 
+        /// <summary>
+        /// Gets if this transport supports sending messages.
+        /// </summary>
         public override bool CanSend {
             get {
                 return false;
             }
         }
 
+        /// <summary>
+        /// Gets if this transports supports request/response messages.
+        /// </summary>
         public override bool CanAsk {
             get {
                 return false;
             }
         }
 
+        /// <summary>
+        /// Gets if this transport supports attaching services.
+        /// </summary>
         public override bool CanAttach {
             get {
                 return false;

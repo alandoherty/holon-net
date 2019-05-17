@@ -16,7 +16,7 @@ namespace Holon
         /// </summary>
         /// <param name="addr">The address.</param>
         /// <returns>The result.</returns>
-        public abstract RoutingResult Execute(ServiceAddress addr);
+        public abstract RoutingResult Execute(Address addr);
     }
 
     /// <summary>
@@ -32,7 +32,7 @@ namespace Holon
         /// </summary>
         /// <param name="addr">The address.</param>
         /// <returns>The result.</returns>
-        public override RoutingResult Execute(ServiceAddress addr)
+        public override RoutingResult Execute(Address addr)
         {
             return new RoutingResult()
             {
@@ -58,14 +58,14 @@ namespace Holon
     /// </summary>
     public class FunctionRule : RoutingRule
     {
-        private Func<ServiceAddress, RoutingResult> _func;
+        private Func<Address, RoutingResult> _func;
 
         /// <summary>
         /// Executes this rule on the provided address.
         /// </summary>
         /// <param name="addr">The address.</param>
         /// <returns>The result.</returns>
-        public override RoutingResult Execute(ServiceAddress addr)
+        public override RoutingResult Execute(Address addr)
         {
             return _func(addr);
         }
@@ -74,7 +74,7 @@ namespace Holon
         /// Creates a new function rule.
         /// </summary>
         /// <param name="func">The function.</param>
-        public FunctionRule(Func<ServiceAddress, RoutingResult> func)
+        public FunctionRule(Func<Address, RoutingResult> func)
         {
             _func = func;
         }
@@ -94,7 +94,7 @@ namespace Holon
         /// </summary>
         /// <param name="addr">The address.</param>
         /// <returns>The result.</returns>
-        public override RoutingResult Execute(ServiceAddress addr)
+        public override RoutingResult Execute(Address addr)
         {
             // check if the namespace matches
             bool match = _logicalNamespace == "*" || _logicalNamespace.Equals(addr.Namespace, StringComparison.CurrentCultureIgnoreCase);
@@ -103,7 +103,7 @@ namespace Holon
             ServiceAddress translatedAddress = null;
 
             if (match && _physicalNamespace != null)
-                translatedAddress = new ServiceAddress(_physicalNamespace, addr.RoutingKey);
+                translatedAddress = new ServiceAddress(_physicalNamespace, addr.Key);
 
             // create the result
             return new RoutingResult()

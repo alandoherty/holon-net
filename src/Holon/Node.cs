@@ -12,7 +12,6 @@ using Holon.Events;
 using Holon.Events.Serializers;
 using Holon.Metrics;
 using Holon.Metrics.Tracing;
-using Holon.Protocol;
 using Holon.Remoting;
 using Holon.Remoting.Introspection;
 using Holon.Services;
@@ -172,36 +171,6 @@ namespace Holon
         #endregion
 
         #region Service Messaging
-        /// <summary>
-        /// Gets the namespace for the match.
-        /// </summary>
-        /// <param name="match">The namespace.</param>
-        /// <returns>The namespace.</returns>
-        internal Namespace GetNamespace(string match) {
-            if (!TryGetNamespace(match, out Namespace @namespace))
-                throw new InvalidOperationException("The message cannot be routed as no namespace can be matched");
-
-            return @namespace;
-        }
-
-        /// <summary>
-        /// Gets the namespace for the match.
-        /// </summary>
-        /// <param name="match">The namespace.</param>
-        /// <param name="namespace">The output namespace.</param>
-        /// <returns>If the namespace was found.</returns>
-        internal bool TryGetNamespace(string match, out Namespace @namespace) {
-            /*foreach(Namespace n in _namespaces) {
-                if (n.Match(match)) {
-                    @namespace = n;
-                    return true;
-                }
-            }*/
-
-            @namespace = null;
-            return false;
-        }
-
         /// <summary>
         /// Replys to a message.
         /// </summary>
@@ -761,10 +730,7 @@ namespace Holon
         /// <exception cref="FormatException">If the event address is invalid.</exception>
         /// <returns></returns>
         public Task EmitAsync(EventAddress addr, object data) {
-            // get namespace
-            Namespace @namespace = GetNamespace(addr.Namespace);
-
-            return @namespace.EmitAsync(addr, data);
+            _rules.Select(r => r.Execute(addr)).Where();
         }
 
         /// <summary>
@@ -783,7 +749,7 @@ namespace Holon
         /// </summary>
         /// <param name="addr">The event address.</param>
         /// <returns>The subscription.</returns>
-        public Task<EventSubscription> SubscribeAsync(EventAddress addr) {
+        public Task<IEventSubscription> SubscribeAsync(EventAddress addr) {
             // get namespace
             Namespace @namespace = GetNamespace(addr.Namespace);
 
@@ -795,7 +761,7 @@ namespace Holon
         /// </summary>
         /// <param name="addr">The event address.</param>
         /// <returns>The subscription.</returns>
-        public Task<EventSubscription> SubscribeAsync(string addr) {
+        public Task<IEventSubscription> SubscribeAsync(string addr) {
             return SubscribeAsync(new EventAddress(addr));
         }
         #endregion
@@ -840,14 +806,5 @@ namespace Holon
             Envelope = envelope;
         }
         #endregion
-    }
-
-    /// <summary>
-    /// Represents a reply waiting structure.
-    /// </summary>
-    struct ReplyWait
-    {
-        public TaskCompletionSource<Envelope> CompletionSource { get; set; }
-        public List<Envelope> Results { get; set; }
     }
 }
