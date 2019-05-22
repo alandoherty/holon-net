@@ -416,7 +416,7 @@ namespace Holon.Remoting
 
                 lock (_behaviour._behaviours) {
                     if (!_behaviour._behaviours.TryGetValue(@interface, out binding) || !binding.AllowIntrospection)
-                        throw new RpcException("InterfaceNotFound", "The interface does not exist", null);
+                        throw new RpcException("InterfaceNotFound", "The interface does not exist", (string)null);
                 }
 
                 return Task.FromResult(binding.Introspection);

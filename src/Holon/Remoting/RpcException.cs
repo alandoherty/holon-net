@@ -29,7 +29,7 @@ namespace Holon.Remoting
         /// </summary>
         public string Details {
             get {
-                return _details;
+                return _details ?? ToString();
             }
         }
         #endregion
@@ -41,10 +41,33 @@ namespace Holon.Remoting
         /// <param name="code">The code.</param>
         /// <param name="message">The message.</param>
         /// <param name="details">The details.</param>
-        public RpcException(string code, string message, string details)
+        internal RpcException(string code, string message, string details)
             : base(message) {
             _code = code;
             _details = details;
+        }
+
+        /// <summary>
+        /// Creates a new RPC excpetion with the provided code and message.
+        /// </summary>
+        /// <param name="code">The code.</param>
+        /// <param name="message">The message.</param>
+        public RpcException(string code, string message)
+            : base(message)
+        {
+            _code = code;
+        }
+
+        /// <summary>
+        /// Creates a new RPC excpetion with the provided code and message.
+        /// </summary>
+        /// <param name="code">The code.</param>
+        /// <param name="message">The message.</param>
+        /// <param name="innerException">The inner exception.</param>
+        public RpcException(string code, string message,  Exception innerException)
+            : base(message, innerException)
+        {
+            _code = code;
         }
 
         /// <summary>
