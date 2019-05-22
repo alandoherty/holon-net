@@ -144,10 +144,10 @@ namespace Holon.Services
                 return;
 
             // dispose of queue
-            _queue.Dispose();
+            //_queue.Dispose();
 
             // detach from node
-            _namespace.Node.Detach(this);
+            //_namespace.Node.Detach(this);
         }
 
         /// <summary>
@@ -156,12 +156,13 @@ namespace Holon.Services
         /// <returns></returns>
         internal async Task ShutdownAsync() {
             // cancel
-            await _queue.CancelAsync().ConfigureAwait(false);
+            //await _queue.CancelAsync().ConfigureAwait(false);
 
             // dispose
             Dispose();
         }
 
+        /*
         /// <summary>
         /// Creates the queue and internal consumer for this service.
         /// </summary>
@@ -212,14 +213,15 @@ namespace Holon.Services
 
             return _queue;
         }
-
+        */
         /// <summary>
         /// Explicitly binds this service to another routing key in the namespace.
         /// </summary>
         /// <param name="routingKey">The routing key.</param>
         /// <returns></returns>
         public Task BindAsync(string routingKey) {
-            return _queue.BindAsync(_addr.Namespace, routingKey);
+            throw new NotImplementedException();
+            //return _queue.BindAsync(_addr.Namespace, routingKey);
         }
 
         /// <summary>
@@ -227,7 +229,8 @@ namespace Holon.Services
         /// </summary>
         /// <param name="routingKey">The routing key.</param>
         public void Bind(string routingKey) {
-            _queue.Bind(_addr.Namespace, routingKey);
+            throw new NotImplementedException();
+            //_queue.Bind(_addr.Namespace, routingKey);
         }
 
         /// <summary>
@@ -262,11 +265,13 @@ namespace Holon.Services
 
                 OnUnhandledException(new ServiceExceptionEventArgs(_behaviour, ex));
             } finally {
+                throw new NotImplementedException();
                 // acknowledge
+                /*
                 _broker.Context.QueueWork(() => {
                     _broker.Channel.BasicAck(envelope.Message.DeliveryTag, false);
                     return null;
-                });
+                });*/
             }
         }
 
@@ -284,13 +289,13 @@ namespace Holon.Services
             }
 
             // trace begin
-            _namespace.Node.OnTraceBegin(new TraceEventArgs(envelope, this));
+            _transport.Node.OnTraceBegin(new TraceEventArgs(envelope, this));
 
             // actually run handler
             await _behaviour.HandleAsync(envelope).ConfigureAwait(false);
 
             // trace end
-            _namespace.Node.OnTraceEnd(new TraceEventArgs(envelope, this));
+            _transport.Node.OnTraceEnd(new TraceEventArgs(envelope, this));
         }
 
         void IObserver<Envelope>.OnCompleted() {

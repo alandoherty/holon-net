@@ -1,5 +1,4 @@
-﻿using RabbitMQ.Client;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -12,33 +11,36 @@ using Holon.Metrics.Tracing;
 namespace Holon
 {
     /// <summary>
-    /// Represents the envelope for a received message.
+    /// Represents a message which has been received.
     /// </summary>
     public sealed class Envelope
     {
         #region Fields
         private Transport _transport;
-        private InboundMessage _msg;
         private byte[] _body;
         private IReplyChannel _channel;
+        private Dictionary<string, string> _headers;
+        private Guid _id;
+        private ServiceAddress _destArr;
+        private object _data;
         #endregion
 
         #region Properties
         /// <summary>
-        /// Gets the target address.
+        /// Gets the target service address.
         /// </summary>
-        public ServiceAddress Address {
+        public ServiceAddress Destination {
             get {
-                return new ServiceAddress($"{_msg.Exchange}:{_msg.RoutingKey}");
+                return _destArr;
             }
         }
 
         /// <summary>
         /// Gets the message headers.
         /// </summary>
-        public IDictionary<string, object> Headers {
+        public IReadOnlyDictionary<string, string> Headers {
             get {
-                return _msg.Properties.Headers == null ? new Dictionary<string, object>() : _msg.Properties.Headers;
+                return _headers ?? new Dictionary<string, string>();
             }
         }
 
@@ -52,35 +54,11 @@ namespace Holon
         }
 
         /// <summary>
-        /// Gets the node the messaged was received on.
-        /// </summary>
-        public Node Node {
-            get {
-                return _namespace.Node;
-            }
-        }
-
-        /// <summary>
-        /// Gets the service address the envelope was received on.
-        /// </summary>
-        public ServiceAddress ServiceAddress {
-            get {
-                return new ServiceAddress(string.Format("{0}:{1}", _msg.Exchange, _msg.RoutingKey));
-            }
-        }
-
-        /// <summary>
         /// Gets the envelope ID, if any.
         /// </summary>
         public Guid ID {
             get {
-                if (_msg.Properties.IsCorrelationIdPresent()) {
-                    if (Guid.TryParse(_msg.Properties.CorrelationId, out Guid envelopeId))
-                        return envelopeId;
-                    else
-                        return Guid.Empty;
-                } else
-                    return Guid.Empty;
+                return _id;
             }
         }
 
@@ -89,8 +67,8 @@ namespace Holon
         /// </summary>
         public string TraceId {
             get {
-                if (Headers.TryGetValue(TraceHeader.HeaderName, out object traceId))
-                    return Encoding.UTF8.GetString(traceId as byte[]);
+                if (Headers.TryGetValue(TraceHeader.HeaderName, out string traceId))
+                    return traceId;
                 else
                     return null;
             }
@@ -105,15 +83,6 @@ namespace Holon
                     return _msg.Properties.ReplyTo;
                 else
                     return null;
-            }
-        }
-
-        /// <summary>
-        /// Gets the message payload.
-        /// </summary>
-        public byte[] RawBody {
-            get {
-                return _msg.Body;
             }
         }
 
@@ -162,7 +131,8 @@ namespace Holon
             if (_channel != null)
                 return _channel.ReplyAsync(body, headers ?? new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase));
             else
-                return _namespace.ReplyAsync(ReplyTo, ID, body, headers ?? new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase));
+                throw new NotImplementedException();
+            //return _namespace.ReplyAsync(ReplyTo, ID, body, headers ?? new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase));
         }
 
         /// <summary>

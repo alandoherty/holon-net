@@ -172,19 +172,6 @@ namespace Holon
 
         #region Service Messaging
         /// <summary>
-        /// Replys to a message.
-        /// </summary>
-        /// <param name="namespace">The namespace.</param>
-        /// <param name="replyTo">The reply to address.</param>
-        /// <param name="replyId">The envelope ID.</param>
-        /// <param name="body">The body.</param>
-        /// <param name="headers">The headers.</param>
-        /// <returns></returns>
-        internal Task ReplyAsync(Namespace @namespace, string replyTo, Guid replyId, byte[] body, IDictionary<string, object> headers = null) {
-            return @namespace.ReplyAsync(replyTo, replyId, body, headers);
-        }
-
-        /// <summary>
         /// Sends the message to the provided service address.
         /// </summary>
         /// <param name="messages">The messages.</param>
@@ -722,26 +709,96 @@ namespace Holon
         #endregion
 
         #region Event System
+        private Task<(bool success, int count)> EmitSingularAsync(IEnumerable<Event> events)
+        {
+            int total = 0;
+
+            // emits events on the assumption they are all in the same transport
+            foreach (Event e in events) {
+                // increment the total
+                total++;
+
+                // determine if we are in multi-transport mode yet
+                if (multiTransport) {
+
+                } else {
+                    // find a rule which matches this address
+                    RoutingResult result = _rules.Select(r => r.Execute(addr))
+                        .Where(r => r.Matched)
+                        .FirstOrDefault();
+
+                    // if we find a result we can store the transport
+                    // if the singularTransport is null we set it and move on
+                    // if the singularTransport is not null we verify it's the same, if it's not we have to switch
+                    // to multi transport mode
+                    if (result.Matched) {
+                        if (singularTransport == null) {
+                            singularTransport = result.Transport;
+                        } else if (singularTransport != null && result.Transport != singularTransport) {
+                            multiTransport = new Dictionary<Transport, List<Event>>();
+                            multiTransport.
+                        }
+                    }
+                }
+            }
+
         /// <summary>
-        /// Emits an event on the provided address.
+        /// Emits an event on the provided address, if one of the events cannot be routed the entire operation will fail and no events will be emitted.
+        /// If events fail to be sent to their transports the remainder of the events will still be sent, the operation returns the total number of events
+        /// which were able to be emitted.
         /// </summary>
-        /// <param name="addr">The event address.</param>
-        /// <param name="data">The event data.</param>
-        /// <exception cref="FormatException">If the event address is invalid.</exception>
-        /// <returns></returns>
-        public Task EmitAsync(EventAddress addr, object data) {
-            _rules.Select(r => r.Execute(addr)).Where();
+        /// <param name="events">The events.</param>
+        /// <exception cref="UnroutableException">If the event address is invalid.</exception>
+        /// <returns>The numbers of events emitted.</returns>
+        public Task<int> EmitAsync(IEnumerable<Event> events) {
+            // we store one transport initially, if all events are going to the same transport we can be efficient, otherwise we have a dictionary
+            // which is created once we match two seperate transports
+            Dictionary<Transport, List<Event>> multiTransport = null;
+            int total = 0;
+
+            foreach(Event e in events) {
+                // increment the total
+                total++;
+
+                // determine if we are in multi-transport mode yet
+                if (multiTransport)  {
+
+                } else {
+                    // find a rule which matches this address
+                    RoutingResult result = _rules.Select(r => r.Execute(addr))
+                        .Where(r => r.Matched)
+                        .FirstOrDefault();
+
+                    // if we find a result we can store the transport
+                    // if the singularTransport is null we set it and move on
+                    // if the singularTransport is not null we verify it's the same, if it's not we have to switch
+                    // to multi transport mode
+                    if (result.Matched) {
+                        if (singularTransport == null) {
+                            singularTransport = result.Transport;
+                        } else if (singularTransport != null && result.Transport != singularTransport) {
+                            multiTransport = new Dictionary<Transport, List<Event>>();
+                            multiTransport.
+                        }
+                    }
+                }
+            }
+
+            
+
+            if (result.Transport == null)
+                throw new UnroutableException(addr, "The event could not be routed to the address");
+
+            return result.Transport.EmitAsync();
         }
 
         /// <summary>
         /// Emits an event on the provided address.
         /// </summary>
-        /// <param name="addr">The event address.</param>
-        /// <param name="data">The event data.</param>
-        /// <exception cref="FormatException">If the event address is invalid.</exception>
+        /// <param name="e">The event.</param>
         /// <returns></returns>
-        public Task EmitAsync(string addr, object data) {
-            return EmitAsync(new EventAddress(addr), data);
+        public Task EmitAsync(Event e) {
+            return EmitAsync(new Event[] { e });
         }
         
         /// <summary>

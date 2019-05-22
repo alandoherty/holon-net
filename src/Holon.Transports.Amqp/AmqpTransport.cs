@@ -3,6 +3,7 @@ using Holon.Services;
 using Holon.Transports.Amqp.Protocol;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -201,7 +202,7 @@ namespace Holon.Transports.Amqp
             message.Headers["x-message-ttl"] = timeout.TotalSeconds;
 
             // send
-            await _broker.SendAsync(message.Address.Namespace, message.Address.RoutingKey, message.Body, message.Headers, _replyQueue.Name, envelopeId.ToString()).ConfigureAwait(false);
+            await _broker.SendAsync(message.Address.Namespace, message.Address.Key, message.Body, message.Headers, _replyQueue.Name, envelopeId.ToString()).ConfigureAwait(false);
 
             // the actual receiver handler is setup since it's syncronous, but now we wait
             return await envelopeWait.ConfigureAwait(false);
@@ -264,7 +265,7 @@ namespace Holon.Transports.Amqp
             if (envelope.ID == Guid.Empty)
             {
                 // trigger event
-                _node.OnUnroutableReply(new UnroutableReplyEventArgs(envelope));
+                //_node.OnUnroutableReply(new UnroutableReplyEventArgs(envelope));
 
                 return;
             }
@@ -284,7 +285,7 @@ namespace Holon.Transports.Amqp
                 Console.WriteLine("unroutable reply: {0}", envelope.ID);
 
                 // trigger event
-                _node.OnUnroutableReply(new UnroutableReplyEventArgs(envelope));
+                //_node.OnUnroutableReply(new UnroutableReplyEventArgs(envelope));
             }
             else
             {
@@ -516,13 +517,13 @@ namespace Holon.Transports.Amqp
             }
 
             // create subscription
-            return new EventSubscription(addr, this, brokerQueue);
+            return new AmqpEventSubscription(addr, this, brokerQueue);
         }
         #endregion
 
         class ReplyObserver : IObserver<InboundMessage>
         {
-            public Namespace Namespace { get; set; }
+            //public Namespace Namespace { get; set; }
 
             public void OnCompleted()
             {
@@ -534,16 +535,16 @@ namespace Holon.Transports.Amqp
 
             public void OnNext(InboundMessage msg)
             {
-                Namespace.ReplyProcess(msg);
+               // Namespace.ReplyProcess(msg);
             }
 
             /// <summary>
             /// Creates a new reply observer for the provided namespace.
             /// </summary>
-            /// <param name="namespace">The namespace.</param>
-            public ReplyObserver(Namespace @namespace)
+            /// <param name="transport">The transport.</param>
+            public ReplyObserver(AmqpTransport transport)
             {
-                Namespace = @namespace;
+                //transport = transport;
             }
         }
    
