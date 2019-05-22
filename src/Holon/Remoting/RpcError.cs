@@ -12,6 +12,7 @@ namespace Holon.Remoting
         #region Fields
         private string _code;
         private string _message;
+        private string _details;
         #endregion
 
         #region Properties
@@ -32,6 +33,15 @@ namespace Holon.Remoting
                 return _message;
             }
         }
+
+        /// <summary>
+        /// Gets the error details.
+        /// </summary>
+        public string Details {
+            get {
+                return _details ?? _message;
+            }
+        }
         #endregion
 
         #region Constructors
@@ -40,9 +50,11 @@ namespace Holon.Remoting
         /// </summary>
         /// <param name="code">The code.</param>
         /// <param name="message">The message.</param>
-        internal RpcError(string code, string message) {
+        /// <param name="details">The details.</param>
+        internal RpcError(string code, string message, string details) {
             _code = code;
             _message = message;
+            _details = details;
         }
         #endregion
     }

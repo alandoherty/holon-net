@@ -11,6 +11,7 @@ namespace Holon.Remoting
     {
         #region Fields
         private string _code;
+        private string _details;
         #endregion
 
         #region Properties
@@ -22,6 +23,15 @@ namespace Holon.Remoting
                 return _code;
             }
         }
+
+        /// <summary>
+        /// Gets the details.
+        /// </summary>
+        public string Details {
+            get {
+                return _details;
+            }
+        }
         #endregion
 
         #region Constructors
@@ -30,20 +40,11 @@ namespace Holon.Remoting
         /// </summary>
         /// <param name="code">The code.</param>
         /// <param name="message">The message.</param>
-        public RpcException(string code, string message)
+        /// <param name="details">The details.</param>
+        public RpcException(string code, string message, string details)
             : base(message) {
             _code = code;
-        }
-
-        /// <summary>
-        /// Creates a new RPC exception with the provided code, message and inner exception.
-        /// </summary>
-        /// <param name="code">The code.</param>
-        /// <param name="message">The message.</param>
-        /// <param name="innerException">The inner exception.</param>
-        public RpcException(string code, string message, Exception innerException)
-            : base(message, innerException) {
-            _code = code;
+            _details = details;
         }
 
         /// <summary>
@@ -51,16 +52,7 @@ namespace Holon.Remoting
         /// </summary>
         /// <param name="error">The error.</param>
         public RpcException(RpcError error)
-            : this(error.Code, error.Message) {
-        }
-
-        /// <summary>
-        /// Creates a new RPC exception with the RPC error object and inner exception.
-        /// </summary>
-        /// <param name="error">The error.</param>
-        /// <param name="innerException">The inner exception.</param>
-        public RpcException(RpcError error, Exception innerException)
-          : this(error.Code, error.Message, innerException) {
+            : this(error.Code, error.Message, error.Details) {
         }
         #endregion
     }

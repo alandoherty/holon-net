@@ -41,7 +41,7 @@ namespace Example.General
         public async Task<string> Login(LoginRequestMsg login) {
             Console.WriteLine($"Worker ({_uuid}) - Username: {login.Username} Password: {login.Password}");
             RpcContext context = RpcContext.Current;
-
+         
             return "Wow";
         }
 
@@ -85,8 +85,12 @@ namespace Example.General
                 Console.WriteLine();
             }
 
-            // detaches the service
-            await TestNode.DetachAsync(service).ConfigureAwait(false);
+            var proxy = TestNode.Proxy<ITest001>("auth:login");
+            string a = await proxy.Login(new LoginRequestMsg()
+            {
+                Username = "wow",
+                Password = "wow"
+            });
 
             await Task.Delay(50000);
         }

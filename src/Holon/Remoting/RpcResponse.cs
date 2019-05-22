@@ -70,8 +70,9 @@ namespace Holon.Remoting
         /// </summary>
         /// <param name="code">The code.</param>
         /// <param name="message">The message.</param>
-        internal RpcResponse(string code, string message) {
-            _error = new RpcError(code, message);
+        /// <param name="details">The details.</param>
+        internal RpcResponse(string code, string message, string details) {
+            _error = new RpcError(code, message, details);
             _data = null;
         }
 

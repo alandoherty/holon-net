@@ -141,12 +141,13 @@ namespace Holon.Remoting.Serializers
                     // find the code and message
                     XElement errCode = err.Element(XName.Get("Code"));
                     XElement errMsg = err.Element(XName.Get("Message"));
+                    XElement errDetails = err.Element(XName.Get("Details"));
 
                     if (errCode == null || errMsg == null)
                         throw new InvalidDataException("Invalid XML document, error missing Code and Message elements");
 
                     // get data
-                    return new RpcResponse(errCode.Value, errMsg.Value);
+                    return new RpcResponse(errCode.Value, errMsg.Value, errDetails == null ? null : errDetails.Value);
                 }
             }
         }
@@ -223,6 +224,12 @@ namespace Holon.Remoting.Serializers
                     writer.WriteEndElement();
                     writer.WriteStartElement("Message");
                     writer.WriteValue(response.Error.Message);
+
+                    if (response.Error.Details != null)
+                    {
+                        writer.WriteStartElement("Details");
+                        writer.WriteValue(response.Error.Details);
+                    }
                 }
 
                 // finish document

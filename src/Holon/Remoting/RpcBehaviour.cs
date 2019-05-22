@@ -78,9 +78,9 @@ namespace Holon.Remoting
                 try {
                     req = serializer.DeserializeRequest(envelope.Body, (i, o) => RpcArgument.FromMember(GetMember(i, o)));
                 } catch (KeyNotFoundException) {
-                    res = new RpcResponse("InterfaceNotFound", "The interface or operation could not be found");
+                    res = new RpcResponse("InterfaceNotFound", "The interface or operation could not be found", null);
                 } catch(Exception ex) {
-                    res = new RpcResponse("ArgumentInvalid", string.Format("The request format is invalid: {0}", ex.Message));
+                    res = new RpcResponse("ArgumentInvalid", string.Format("The request format is invalid: {0}", ex.Message), null);
                 }
 
                 // apply single request
@@ -90,7 +90,7 @@ namespace Holon.Remoting
                     if (req != null)
                         memberInfo = GetMember(req.Interface, req.Operation);
                 } catch (KeyNotFoundException) {
-                    res = new RpcResponse("OperationNotFound", "The interface or operation could not be found");
+                    res = new RpcResponse("OperationNotFound", "The interface or operation could not be found", null);
                 }
 
                 // get operation information
@@ -107,7 +107,7 @@ namespace Holon.Remoting
 
                 // check if they have a response ID if no reply isn't enabled
                 if (!noReply && envelope.ID == Guid.Empty)
-                    res = new RpcResponse("InvalidOperation", "The envelope does not specify a correlation ID");
+                    res = new RpcResponse("InvalidOperation", "The envelope does not specify a correlation ID", null);
 
                 // apply request if we don't have a response already, typically an error
                 if (res == null) {
@@ -192,7 +192,7 @@ namespace Holon.Remoting
         private async Task<RpcResponse> ApplyRequestAsync(RpcRequest req, MemberInfo member) {
             // find interface behaviour
             if (!_behaviours.TryGetValue(req.Interface, out Binding binding))
-                return new RpcResponse("InterfaceNotFound", "The interface binding could not be found");
+                return new RpcResponse("InterfaceNotFound", "The interface binding could not be found", null);
             
             // get method info
             MethodInfo operationMethod = member as MethodInfo;
@@ -205,7 +205,7 @@ namespace Holon.Remoting
             for (int i = 0; i < methodArgs.Length; i++) {
                 if (!req.Arguments.TryGetValue(methodParams[i].Name, out methodArgs[i])) {
                     if (!methodParams[i].IsOptional)
-                        return new RpcResponse("ArgumentRequired", string.Format("The argument {0} is not optional", methodParams[i].Name));
+                        return new RpcResponse("ArgumentRequired", string.Format("The argument {0} is not optional", methodParams[i].Name), null);
                 }
             }
 
@@ -216,9 +216,9 @@ namespace Holon.Remoting
                 methodResult = operationMethod.Invoke(binding.Behaviour, methodArgs);
                 await ((Task)methodResult).ConfigureAwait(false);
             } catch (RpcException ex) {
-                return new RpcResponse(ex.Code, ex.Message);
+                return new RpcResponse(ex.Code, ex.Message, ex.ToString());
             } catch (Exception ex) {
-                return new RpcResponse("Exception", ex.ToString());
+                return new RpcResponse("Exception", ex.Message, ex.ToString());
             }
             
             // check if the operation returns anything
@@ -416,7 +416,7 @@ namespace Holon.Remoting
 
                 lock (_behaviour._behaviours) {
                     if (!_behaviour._behaviours.TryGetValue(@interface, out binding) || !binding.AllowIntrospection)
-                        throw new RpcException("InterfaceNotFound", "The interface does not exist");
+                        throw new RpcException("InterfaceNotFound", "The interface does not exist", null);
                 }
 
                 return Task.FromResult(binding.Introspection);

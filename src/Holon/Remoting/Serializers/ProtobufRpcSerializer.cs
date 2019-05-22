@@ -63,7 +63,7 @@ namespace Holon.Remoting.Serializers
                 if (msg.IsSuccess)
                     return new RpcResponse(msg.Data.GetData(responseType), responseType);
                 else
-                    return new RpcResponse(msg.Error.Code, msg.Error.Message);
+                    return new RpcResponse(msg.Error.Code, msg.Error.Message, msg.Error.Details);
             }
         }
 
@@ -106,7 +106,8 @@ namespace Holon.Remoting.Serializers
                 } else {
                     res.Error = new ErrorMsg() {
                         Code = response.Error.Code,
-                        Message = response.Error.Message
+                        Message = response.Error.Message,
+                        Details = response.Error.Details
                     };
                 }
 
@@ -281,5 +282,8 @@ namespace Holon.Remoting.Serializers
 
         [ProtoMember(2, IsRequired = true)]
         public string Message { get; set; }
+
+        [ProtoMember(3)]
+        public string Details { get; set; }
     }
 }
