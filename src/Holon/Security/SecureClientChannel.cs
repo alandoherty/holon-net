@@ -115,7 +115,7 @@ namespace Holon.Security
                     SecureHeader respondCertHeader = null;
 
                     try {
-                        respondCertHeader = new SecureHeader(Encoding.UTF8.GetString(respondCert.Headers[SecureHeader.HeaderName] as byte[]));
+                        respondCertHeader = new SecureHeader(respondCert.Headers[SecureHeader.HeaderName]);
                     } catch (Exception ex) {
                         throw new InvalidDataException("The certificate request response header was invalid", ex);
                     }
@@ -212,7 +212,7 @@ namespace Holon.Security
                 SecureHeader respondKeyHeader = null;
 
                 try {
-                    respondKeyHeader = new SecureHeader(Encoding.UTF8.GetString(respondKey.Headers[SecureHeader.HeaderName] as byte[]));
+                    respondKeyHeader = new SecureHeader(respondKey.Headers[SecureHeader.HeaderName]);
                 } catch (Exception ex) {
                     throw new InvalidDataException("The key request response header was invalid", ex);
                 }
@@ -369,12 +369,12 @@ namespace Holon.Security
                 throw new InvalidDataException("The secure service sent an invalid response");
 
             // decode header and take action depending on the response
-            SecureHeader header = new SecureHeader(Encoding.UTF8.GetString(response.Headers[SecureHeader.HeaderName] as byte[]));
+            SecureHeader header = new SecureHeader(response.Headers[SecureHeader.HeaderName]);
 
             if (header.Type == SecureMessageType.RespondMessage) {
                 using (MemoryStream outputStream = new MemoryStream()) {
                     // decrypt
-                    using (MemoryStream inputStream = new MemoryStream(response.Body)) {
+                    using (MemoryStream inputStream = new MemoryStream(response.Data)) {
                         using (Aes aes = Aes.Create()) {
                             aes.Key = _serverEncryptionKey;
                             aes.IV = _serverNonce;
@@ -385,7 +385,7 @@ namespace Holon.Security
                         }
                     }
 
-                    response.Body = outputStream.ToArray();
+                    //response.Data = outputStream.ToArray();
                     return response;
                 }
             } else if (header.Type == SecureMessageType.Error) {
@@ -495,13 +495,13 @@ namespace Holon.Security
                     throw new InvalidDataException("The secure service sent an invalid response");
 
                 // decode header and take action depending on the response
-                SecureHeader header = new SecureHeader(Encoding.UTF8.GetString(response.Headers[SecureHeader.HeaderName] as byte[]));
+                SecureHeader header = new SecureHeader(response.Headers[SecureHeader.HeaderName]);
 
                 try {
                     if (header.Type == SecureMessageType.RespondMessage) {
                         using (MemoryStream outputStream = new MemoryStream()) {
                             // decrypt
-                            using (MemoryStream inputStream = new MemoryStream(response.Body)) {
+                            using (MemoryStream inputStream = new MemoryStream(response.Data)) {
                                 using (Aes aes = Aes.Create()) {
                                     aes.Key = _serverEncryptionKey;
                                     aes.IV = _serverNonce;
@@ -512,7 +512,7 @@ namespace Holon.Security
                                 }
                             }
 
-                            response.Body = outputStream.ToArray();
+                            //response.Data = outputStream.ToArray();
                             return response;
                         }
                     } else {

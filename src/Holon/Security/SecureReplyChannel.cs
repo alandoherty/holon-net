@@ -19,7 +19,8 @@ namespace Holon.Security
 
         public string ReplyTo {
             get {
-                return _envelope.ReplyTo;
+                throw new NotImplementedException();
+                //return _envelope.ReplyTo;
             }
         }
 
@@ -36,6 +37,8 @@ namespace Holon.Security
         }
 
         public Task ReplyAsync(byte[] body, IDictionary<string, object> headers = null) {
+            throw new NotImplementedException();
+            /*
             // ensure headers created
             if (headers == null)
                 headers = new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase);
@@ -60,7 +63,7 @@ namespace Holon.Security
                 headers[SecureHeader.HeaderName] = new SecureHeader(SecureHeader.HeaderVersion, SecureMessageType.RespondMessage).ToString();
 
                 return _envelope.Namespace.ReplyAsync(ReplyTo, ReplyID, outputStream.ToArray(), headers);
-            }
+            }*/
         }
 
         public SecureReplyChannel(Envelope envelope, byte[] key, byte[] nonce) {

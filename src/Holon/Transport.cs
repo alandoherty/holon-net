@@ -13,6 +13,7 @@ namespace Holon
     {
         #region Fields
         private Node _node;
+        private string _name;
         #endregion
 
         #region Properties
@@ -71,6 +72,17 @@ namespace Holon
                 _node = value;
             }
         }
+
+        /// <summary>
+        /// Gets the unique name for this transport, can be null.
+        /// </summary>
+        public string Name {
+            get {
+                return _name;
+            } internal set {
+                _name = value;
+            }
+        }
         #endregion
 
         /// <summary>
@@ -78,8 +90,8 @@ namespace Holon
         /// </summary>
         /// <param name="events">The events.</param>
         /// <exception cref="NotSupportedException">If the operation is not supported.</exception>
-        /// <returns></returns>
-        internal protected virtual Task EmitAsync(IEnumerable<Event> events)
+        /// <returns>The number of events emitted.</returns>
+        internal protected virtual Task<int> EmitAsync(IEnumerable<Event> events)
         {
             if (CanEmit)
                 throw new NotImplementedException();

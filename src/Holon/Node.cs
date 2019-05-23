@@ -1,23 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Reflection;
-using System.Security.Cryptography;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using Holon.Events;
-using Holon.Events.Serializers;
-using Holon.Metrics;
+﻿using Holon.Events;
 using Holon.Metrics.Tracing;
 using Holon.Remoting;
 using Holon.Remoting.Introspection;
 using Holon.Services;
-using Newtonsoft.Json;
-using ProtoBuf;
-using ProtoBuf.Meta;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Holon
 {
@@ -175,8 +165,8 @@ namespace Holon
         /// Sends the message to the provided service address.
         /// </summary>
         /// <param name="messages">The messages.</param>
-        /// <returns></returns>
-        public Task SendAsync(params Message[] messages) {
+        /// <returns>The number of messages which were successfully sent.</returns>
+        public Task<int> SendAsync(params Message[] messages) {
             return SendAsync((IEnumerable<Message>)messages);
         }
 
@@ -185,19 +175,63 @@ namespace Holon
         /// </summary>
         /// <param name="messages">The messages.</param>
         /// <returns></returns>
-        public Task SendAsync(IEnumerable<Message> messages) {
-            // group by namespaces, hopefully they are all same namespace so we get that sweet sweet performance
-            var groupedMessages = messages.GroupBy(m => m.Address.Namespace, StringComparer.CurrentCultureIgnoreCase);
-            List<Task> groupTasks = new List<Task>(1);
+        public async Task<int> SendAsync(IEnumerable<Message> messages) {
+            // build all the messages into the appropriate transports
+            Dictionary<Transport, List<Message>> messageRouting = null;
+            Transport lastTransport = null;
+            List<Message> lastList = null;
+            int total = 0;
 
-            foreach (IGrouping<string, Message> group in groupedMessages) {
-                // get the namespace
-                Namespace @namespace = GetNamespace(group.Key);
+            foreach (Message msg in messages) {
+                total++;
 
-                groupTasks.Add(@namespace.SendAsync(group));
+                // find a rule which matches this address
+                RoutingResult result = _rules.Select(r => r.Execute(msg.Address))
+                    .Where(r => r.Matched)
+                    .FirstOrDefault();
+
+                if (result.Matched) {
+                    lastTransport = result.Transport;
+
+                    // try and find the list for the transport, if we find it add our message to the list
+                    // otherwise create a list with the message as the first member
+                    if (messageRouting.TryGetValue(result.Transport, out List<Message> list)) {
+                        list.Add(msg);
+                    } else {
+                        lastList = new List<Message>() {
+                            { msg }
+                        };
+
+                        messageRouting[result.Transport] = lastList;
+                    }
+                } else {
+                    throw new UnroutableException(msg.Address, "The message could not be routed to the address");
+                }
             }
 
-            return Task.WhenAll(groupTasks);
+            // emit all the messages, if we only have one transport we can make this slightly more efficient
+            if (messageRouting.Count == 1) {
+                //await lastTransport.SendAsync(lastList).ConfigureAwait(false);
+                return total;
+            } else {
+                // create a map between tasks and the lists so we can add up the successful total later
+                Dictionary<Task, List<Event>> tasks = new Dictionary<Task, List<Event>>();
+
+                foreach (var kv in messageRouting) {
+                    try {
+                        //tasks[kv.Key.EmitAsync(kv.Value)] = kv.Value;
+                    } catch (Exception) { }
+                }
+
+                // wait for all
+                try {
+                    await Task.WhenAll(tasks.Keys).ConfigureAwait(false);
+                } catch (Exception) { }
+
+                // add up the total number of successfully emitted events
+                return tasks.Where(kv => !kv.Key.IsFaulted)
+                    .Sum(kv => kv.Value.Count);
+            }
         }
 
         /// <summary>
@@ -205,11 +239,8 @@ namespace Holon
         /// </summary>
         /// <param name="message">The message.</param>
         /// <returns></returns>
-        public Task SendAsync(Message message) {
-            // get namespace
-            Namespace @namespace = GetNamespace(message.Address.Namespace);
-
-            return @namespace.SendAsync(message);
+        public Task<int> SendAsync(Message message) {
+            return SendAsync(new Message[] { message });
         }
 
         /// <summary>
@@ -219,7 +250,7 @@ namespace Holon
         /// <param name="body">The body.</param>
         /// <param name="headers">The headers.</param>
         /// <returns></returns>
-        public Task SendAsync(string addr, byte[] body, IDictionary<string, object> headers = null) {
+        public Task<int> SendAsync(string addr, byte[] body, IDictionary<string, object> headers = null) {
             return SendAsync(new Message() {
                 Address = new ServiceAddress(addr),
                 Body = body,
@@ -234,7 +265,7 @@ namespace Holon
         /// <param name="body">The body.</param>
         /// <param name="headers">The headers.</param>
         /// <returns></returns>
-        public Task SendAsync(ServiceAddress addr, byte[] body, IDictionary<string, object> headers = null) {
+        public Task<int> SendAsync(ServiceAddress addr, byte[] body, IDictionary<string, object> headers = null) {
             return SendAsync(new Message() {
                 Address = addr,
                 Body = body,
@@ -251,9 +282,10 @@ namespace Holon
         /// <returns></returns>
         public Task<Envelope> AskAsync(Message message, TimeSpan timeout, CancellationToken cancellationToken = default(CancellationToken)) {
             // get namespace
-            Namespace @namespace = GetNamespace(message.Address.Namespace);
+            //Namespace @namespace = GetNamespace(message.Address.Namespace);
 
-            return @namespace.AskAsync(message, timeout, cancellationToken);
+            //return @namespace.AskAsync(message, timeout, cancellationToken);
+            throw new NotImplementedException();
         }
 
         /// <summary>
@@ -315,9 +347,10 @@ namespace Holon
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns></returns>
         public Task<Envelope[]> BroadcastAsync(Message message, TimeSpan timeout,CancellationToken cancellationToken = default(CancellationToken)) {
-            Namespace @namespace = GetNamespace(message.Address.Namespace);
+            //Namespace @namespace = GetNamespace(message.Address.Namespace);
 
-            return @namespace.BroadcastAsync(message, timeout, cancellationToken);
+            //return @namespace.BroadcastAsync(message, timeout, cancellationToken);
+            throw new NotImplementedException();
         }
 
         /// <summary>
@@ -453,7 +486,7 @@ namespace Holon
         /// <returns>The attached service.</returns>
         public async Task<Service> AttachAsync(ServiceAddress addr, ServiceConfiguration configuration, ServiceBehaviour behaviour) {
             // get namespace
-            Namespace @namespace = GetNamespace(addr.Namespace);
+            /*Namespace @namespace = GetNamespace(addr.Namespace);
 
             // create service
             Service service = new Service(@namespace, addr, behaviour, configuration);
@@ -469,7 +502,8 @@ namespace Holon
                 _services.Add(service);
             }
 
-            return service;
+            return service;*/
+            throw new NotImplementedException();
         }
 
         /// <summary>
@@ -709,87 +743,71 @@ namespace Holon
         #endregion
 
         #region Event System
-        private Task<(bool success, int count)> EmitSingularAsync(IEnumerable<Event> events)
-        {
-            int total = 0;
-
-            // emits events on the assumption they are all in the same transport
-            foreach (Event e in events) {
-                // increment the total
-                total++;
-
-                // determine if we are in multi-transport mode yet
-                if (multiTransport) {
-
-                } else {
-                    // find a rule which matches this address
-                    RoutingResult result = _rules.Select(r => r.Execute(addr))
-                        .Where(r => r.Matched)
-                        .FirstOrDefault();
-
-                    // if we find a result we can store the transport
-                    // if the singularTransport is null we set it and move on
-                    // if the singularTransport is not null we verify it's the same, if it's not we have to switch
-                    // to multi transport mode
-                    if (result.Matched) {
-                        if (singularTransport == null) {
-                            singularTransport = result.Transport;
-                        } else if (singularTransport != null && result.Transport != singularTransport) {
-                            multiTransport = new Dictionary<Transport, List<Event>>();
-                            multiTransport.
-                        }
-                    }
-                }
-            }
-
         /// <summary>
         /// Emits an event on the provided address, if one of the events cannot be routed the entire operation will fail and no events will be emitted.
         /// If events fail to be sent to their transports the remainder of the events will still be sent, the operation returns the total number of events
         /// which were able to be emitted.
         /// </summary>
         /// <param name="events">The events.</param>
-        /// <exception cref="UnroutableException">If the event address is invalid.</exception>
+        /// <exception cref="UnroutableException">If the event address cannot be routed to a transport.</exception>
         /// <returns>The numbers of events emitted.</returns>
-        public Task<int> EmitAsync(IEnumerable<Event> events) {
-            // we store one transport initially, if all events are going to the same transport we can be efficient, otherwise we have a dictionary
-            // which is created once we match two seperate transports
-            Dictionary<Transport, List<Event>> multiTransport = null;
+        public async Task<int> EmitAsync(IEnumerable<Event> events) {
+            // build all the events into the appropriate transports
+            Dictionary<Transport, List<Event>> eventRouting = null;
+            Transport lastTransport = null;
+            List<Event> lastList = null;
             int total = 0;
 
             foreach(Event e in events) {
-                // increment the total
                 total++;
 
-                // determine if we are in multi-transport mode yet
-                if (multiTransport)  {
+                // find a rule which matches this address
+                RoutingResult result = _rules.Select(r => r.Execute(e.Address))
+                    .Where(r => r.Matched)
+                    .FirstOrDefault();
 
-                } else {
-                    // find a rule which matches this address
-                    RoutingResult result = _rules.Select(r => r.Execute(addr))
-                        .Where(r => r.Matched)
-                        .FirstOrDefault();
+                if (result.Matched) {
+                    lastTransport = result.Transport;
 
-                    // if we find a result we can store the transport
-                    // if the singularTransport is null we set it and move on
-                    // if the singularTransport is not null we verify it's the same, if it's not we have to switch
-                    // to multi transport mode
-                    if (result.Matched) {
-                        if (singularTransport == null) {
-                            singularTransport = result.Transport;
-                        } else if (singularTransport != null && result.Transport != singularTransport) {
-                            multiTransport = new Dictionary<Transport, List<Event>>();
-                            multiTransport.
-                        }
+                    // try and find the list for the transport, if we find it add our event to the list
+                    // otherwise create a list with the event as the first member
+                    if (eventRouting.TryGetValue(result.Transport, out List<Event> list)) {
+                        list.Add(e);
+                    } else {
+                        lastList = new List<Event>() {
+                            { e }
+                        };
+
+                        eventRouting[result.Transport] = lastList;
                     }
+                } else {
+                    throw new UnroutableException(e.Address, "The event could not be routed to the address");
                 }
             }
 
-            
+            // emit all the events, if we only have one transport we can make this slightly more efficient
+            if (eventRouting.Count == 1) {
+                await lastTransport.EmitAsync(lastList).ConfigureAwait(false);
+                return total;
+            } else {
+                // create a map between tasks and the lists so we can add up the successful total later
+                Dictionary<Task, List<Event>> tasks = new Dictionary<Task, List<Event>>();
 
-            if (result.Transport == null)
-                throw new UnroutableException(addr, "The event could not be routed to the address");
+                foreach (var kv in eventRouting) {
+                    try {
+                        tasks[kv.Key.EmitAsync(kv.Value)] = kv.Value;
+                    } catch (Exception) { }
+                }
 
-            return result.Transport.EmitAsync();
+                // wait for all
+                try {
+                    await Task.WhenAll(tasks.Keys).ConfigureAwait(false);
+                } catch (Exception) { }
+
+                // add up the total number of successfully emitted events
+                return tasks.Where(kv => !kv.Key.IsFaulted)
+                    .Sum(kv => kv.Value.Count);
+            }
         }
 
         /// <summary>
@@ -805,12 +823,18 @@ namespace Holon
         /// Subscribes to events matching the provided name.
         /// </summary>
         /// <param name="addr">The event address.</param>
+        /// <exception cref="UnroutableException">If the event address cannot be routed to a transport.</exception>
         /// <returns>The subscription.</returns>
         public Task<IEventSubscription> SubscribeAsync(EventAddress addr) {
-            // get namespace
-            Namespace @namespace = GetNamespace(addr.Namespace);
+            // find a rule which matches this address
+            RoutingResult result = _rules.Select(r => r.Execute(addr))
+                .Where(r => r.Matched)
+                .FirstOrDefault();
 
-            return @namespace.SubscribeAsync(addr);
+            if (!result.Matched)
+                throw new UnroutableException(addr, "The event subscription could not be obtained on the address");
+
+            return result.Transport.SubscribeAsync(addr);
         }
 
         /// <summary>

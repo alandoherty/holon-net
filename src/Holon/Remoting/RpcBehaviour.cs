@@ -40,14 +40,14 @@ namespace Holon.Remoting
         /// <returns></returns>
         public override Task HandleAsync(Envelope envelope) {
             // try and get the header info
-            if (!envelope.Headers.TryGetValue(RpcHeader.HEADER_NAME, out object rpcHeader)) {
+            if (!envelope.Headers.TryGetValue(RpcHeader.HEADER_NAME, out string rpcHeader)) {
                 if (!envelope.Headers.TryGetValue(RpcHeader.HEADER_NAME_LEGACY, out rpcHeader)) {
                     throw new InvalidOperationException("The response envelope is not a valid RPC message");
                 }
             }
 
             // gets the header
-            RpcHeader header = new RpcHeader(Encoding.UTF8.GetString(rpcHeader as byte[]));
+            RpcHeader header = new RpcHeader(rpcHeader);
 
             if (header.Version == "1.1") {
                 return ApplyAsync(header, envelope);
@@ -76,7 +76,7 @@ namespace Holon.Remoting
                 RpcResponse res = null;
 
                 try {
-                    req = serializer.DeserializeRequest(envelope.Body, (i, o) => RpcArgument.FromMember(GetMember(i, o)));
+                    req = serializer.DeserializeRequest(envelope.Data, (i, o) => RpcArgument.FromMember(GetMember(i, o)));
                 } catch (KeyNotFoundException) {
                     res = new RpcResponse("InterfaceNotFound", "The interface or operation could not be found");
                 } catch(Exception ex) {

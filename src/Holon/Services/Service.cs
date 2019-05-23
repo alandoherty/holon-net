@@ -343,10 +343,10 @@ namespace Holon.Services
             }
 
             // acknowledge
-            _broker.Context.QueueWork(() => {
+            /*_broker.Context.QueueWork(() => {
                 _broker.Channel.BasicAck(envelope.Message.DeliveryTag, false);
                 return null;
-            });
+            });*/
         }
         #endregion
 

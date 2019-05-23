@@ -72,7 +72,7 @@ namespace Holon
         /// </summary>
         /// <param name="func">The function.</param>
         /// <returns>The node builder.</returns>
-        public NodeBuilder Rule(Func<ServiceAddress, RoutingResult> func)
+        public NodeBuilder Rule(Func<Address, RoutingResult> func)
         {
             return Rule(new FunctionRule(func));
         }

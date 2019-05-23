@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -68,7 +69,7 @@ namespace Holon.Transports
         /// <param name="events">The events.</param>
         /// <exception cref="NotSupportedException">If the operation is not supported.</exception>
         /// <returns></returns>
-        protected internal override Task EmitAsync(IEnumerable<Event> events)
+        protected internal override Task<int> EmitAsync(IEnumerable<Event> events)
         {
             foreach (Event e in events)
             {
@@ -84,7 +85,7 @@ namespace Holon.Transports
             }
 
             // no async required here
-            return Task.CompletedTask;
+            return Task.FromResult(events.Count());
         }
 
         /// <summary>

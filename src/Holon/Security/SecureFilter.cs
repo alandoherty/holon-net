@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 
 namespace Holon.Security
 {
+    /*
     /// <summary>
     /// Implements a secure filter will handles handshakes, message decryption and setting the correct channel for responses.
     /// </summary>
@@ -253,5 +254,5 @@ namespace Holon.Security
                 _secret = deriveBytes.GetBytes(32);
             }
         }
-    }
+    }*/
 }

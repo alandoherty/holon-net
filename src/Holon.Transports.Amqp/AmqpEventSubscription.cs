@@ -43,14 +43,14 @@ namespace Holon.Transports.Amqp
         /// <returns>The event.</returns>
         private Event ProcessMessage(InboundMessage message) {
             // read envelope
-            Envelope envelope = new Envelope(message, transport);
+            Envelope envelope = null;// new Envelope(message, transport);
             
             // check for header
             if (!envelope.Headers.ContainsKey(AmqpEventHeader.HEADER_NAME))
                 throw new InvalidDataException("Invalid event header");
 
             // read header
-            AmqpEventHeader header = new AmqpEventHeader(Encoding.UTF8.GetString(envelope.Headers[AmqpEventHeader.HEADER_NAME] as byte[]));
+            AmqpEventHeader header = new AmqpEventHeader(envelope.Headers[AmqpEventHeader.HEADER_NAME]);
 
             // validate version
             if (header.Version != "1.1")
@@ -59,11 +59,11 @@ namespace Holon.Transports.Amqp
             // find serializer
             IEventSerializer serializer = null;
 
-            if (!EventSerializer.Serializers.TryGetValue(header.Serializer, out serializer))
-                throw new NotSupportedException("Event serializer not supported");
+            //if (!EventSerializer.Serializers.TryGetValue(header.Serializer, out serializer))
+            //    throw new NotSupportedException("Event serializer not supported");
 
             // post
-            Event e = serializer.DeserializeEvent(envelope.Body);
+            Event e = serializer.DeserializeEvent(envelope.Data);
 
             return e;
         }

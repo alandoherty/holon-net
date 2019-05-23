@@ -77,7 +77,7 @@ namespace Example.General
                 .All<VirtualTransport>();
 
             Node node = nodeBuilder.Build();
-            node.Wow();
+
 
             // wait forever
             await Task.Delay(Timeout.InfiniteTimeSpan);

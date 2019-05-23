@@ -19,7 +19,7 @@ namespace Holon.Remoting
         public static bool TryAsRpcTrace(this TraceEventArgs e, out RpcTrace data)
         {
             // extract the rpc header from the envelope, if we can't find it we return false
-            if (!e.Envelope.Headers.TryGetValue(RpcHeader.HEADER_NAME, out object rpcHeaderStr))
+            if (!e.Envelope.Headers.TryGetValue(RpcHeader.HEADER_NAME, out string rpcHeaderStr))
             {
                 data = null;
                 return false;
@@ -30,7 +30,7 @@ namespace Holon.Remoting
 
             try
             {
-                rpcHeader = new RpcHeader((string)rpcHeaderStr);
+                rpcHeader = new RpcHeader(rpcHeaderStr);
             } catch(Exception)  {
                 // if we can't parse we silently fail, not ideal but this should never happen
                 data = null;

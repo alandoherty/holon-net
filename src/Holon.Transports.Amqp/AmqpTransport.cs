@@ -25,22 +25,9 @@ namespace Holon.Transports.Amqp
 
 
         private Dictionary<Guid, ReplyWait> _replyWaits = new Dictionary<Guid, ReplyWait>();
-
-        private Node _node;
         private Task _replyProcessor;
 
         private List<string> _declaredEventNamespaces = new List<string>();
-        #endregion
-
-        #region Properties
-        /// <summary>
-        /// Gets the node.
-        /// </summary>
-        public Node Node {
-            get {
-                return _node;
-            }
-        }
         #endregion
 
         #region Methods
@@ -68,7 +55,7 @@ namespace Holon.Transports.Amqp
                 message.Headers["x-message-ttl"] = timeout.TotalSeconds;
 
             // send
-            await _broker.SendAsync(message.Address.Namespace, message.Address.RoutingKey, message.Body, message.Headers, _replyQueue.Name, envelopeId.ToString()).ConfigureAwait(false);
+            await _broker.SendAsync(message.Address.Namespace, message.Address.Key, message.Body, message.Headers, _replyQueue.Name, envelopeId.ToString()).ConfigureAwait(false);
 
             // the actual receiver handler is setup since it's syncronous, but now we wait
             return await envelopeWait.ConfigureAwait(false);
@@ -95,7 +82,7 @@ namespace Holon.Transports.Amqp
         public Task SendAsync(IEnumerable<Message> messages)
         {
             return _broker.SendAsync(messages.Select(m => {
-                return new OutboundMessage(m.Address.Namespace, m.Address.RoutingKey, m.Body, m.Headers ?? new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase), null, null);
+                return new OutboundMessage(m.Address.Namespace, m.Address.Key, m.Body, m.Headers ?? new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase), null, null);
             }));
         }
 
@@ -106,7 +93,7 @@ namespace Holon.Transports.Amqp
         /// <returns></returns>
         public Task SendAsync(Message message)
         {
-            return _broker.SendAsync(message.Address.Namespace, message.Address.RoutingKey, message.Body, message.Headers ?? new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase), null, null);
+            return _broker.SendAsync(message.Address.Namespace, message.Address.Key, message.Body, message.Headers ?? new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase), null, null);
         }
 
         /// <summary>
@@ -119,7 +106,7 @@ namespace Holon.Transports.Amqp
             _brokerContext = await BrokerContext.CreateAsync(_connectionUri.ToString());
 
             // create broker
-            _broker = await _brokerContext.CreateBrokerAsync(_node.Configuration.ApplicationId);
+            _broker = await _brokerContext.CreateBrokerAsync(Node.ApplicationId);
 
             // add returned handler
             _broker.Returned += delegate (object s, BrokerReturnedEventArgs e) {
@@ -158,7 +145,7 @@ namespace Holon.Transports.Amqp
                     string uniqueIdStr = BitConverter.ToString(uniqueId).Replace("-", "").ToLower();
 
                     // add the reply queue
-                    _replyQueue = await _broker.CreateQueueAsync(string.Format("~reply:{1}%{0}", _node.UUID, uniqueIdStr), false, true, "", "", true, true, new Dictionary<string, object>() {
+                    _replyQueue = await _broker.CreateQueueAsync(string.Format("~reply:{1}%{0}", Node.UUID, uniqueIdStr), false, true, "", "", true, true, new Dictionary<string, object>() {
                         { "x-expires", (int)TimeSpan.FromMinutes(15).TotalMilliseconds }
                     }).ConfigureAwait(false);
 
@@ -179,7 +166,8 @@ namespace Holon.Transports.Amqp
         /// <returns></returns>
         public async Task SetupServiceAsync(Service service)
         {
-            await service.SetupAsync(_broker).ConfigureAwait(false);
+            throw new NotImplementedException();
+            //await service.SetupAsync(_broker).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -259,7 +247,7 @@ namespace Holon.Transports.Amqp
         private void ReplyProcess(InboundMessage msg)
         {
             //TODO: cancel on dispose
-            Envelope envelope = new Envelope(msg, this);
+            Envelope envelope = null;// new Envelope(msg, this);
 
             // check if we have an correlation
             if (envelope.ID == Guid.Empty)
@@ -461,7 +449,7 @@ namespace Holon.Transports.Amqp
         /// </summary>
         /// <param name="events">The events.</param>
         /// <returns></returns>
-        protected override async Task EmitAsync(IEnumerable<Event> events)
+        protected override async Task<int> EmitAsync(IEnumerable<Event> events)
         {
             foreach (Event e in events)
             {
@@ -480,18 +468,20 @@ namespace Holon.Transports.Amqp
                 //e.Serialize(data);
 
                 // serialize
-                ProtobufEventSerializer serializer = new ProtobufEventSerializer();
-                byte[] body = serializer.SerializeEvent(e);
+                //ProtobufEventSerializer serializer = new ProtobufEventSerializer();
+                byte[] body = null;// serializer.SerializeEvent(e);
 
                 // send event
                 try
                 {
                     await _broker.SendAsync(string.Format("!{0}", e.Address.Namespace), $"{e.Address.Resource}.{e.Address.Name}", body, new Dictionary<string, object>() {
-                    { AmqpEventHeader.HEADER_NAME, new AmqpEventHeader(AmqpEventHeader.HEADER_VERSION, serializer.Name).ToString() }
+                    { AmqpEventHeader.HEADER_NAME, new AmqpEventHeader(AmqpEventHeader.HEADER_VERSION, "pbuf"/*serializer.Name*/).ToString() }
                 }, null, null, false).ConfigureAwait(false);
                 }
                 catch (Exception) { }
             }
+
+            return events.Count();
         }
 
         /// <summary>

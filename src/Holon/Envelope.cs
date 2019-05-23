@@ -17,12 +17,11 @@ namespace Holon
     {
         #region Fields
         private Transport _transport;
-        private byte[] _body;
         private IReplyChannel _channel;
         private Dictionary<string, string> _headers;
         private Guid _id;
         private ServiceAddress _destArr;
-        private object _data;
+        private byte[] _data;
         #endregion
 
         #region Properties
@@ -41,6 +40,15 @@ namespace Holon
         public IReadOnlyDictionary<string, string> Headers {
             get {
                 return _headers ?? new Dictionary<string, string>();
+            }
+        }
+
+        /// <summary>
+        /// Gets the node this message was received on.
+        /// </summary>
+        public Node Node {
+            get {
+                return _transport.Node;
             }
         }
 
@@ -75,30 +83,11 @@ namespace Holon
         }
 
         /// <summary>
-        /// Gets the reply to address.
+        /// Gets the data.
         /// </summary>
-        public string ReplyTo {
+        public byte[] Data {
             get {
-                if (_msg.Properties.IsReplyToPresent())
-                    return _msg.Properties.ReplyTo;
-                else
-                    return null;
-            }
-        }
-
-        /// <summary>
-        /// Gets the envelope payload.
-        /// </summary>
-        public byte[] Body {
-            get {
-                // check if we should use the raw body
-                if (_body == null)
-                    return _msg.Body;
-
-                // we have an altered body
-                return _body;
-            } set {
-                _body = value;
+                return _data;
             }
         }
 
@@ -125,7 +114,7 @@ namespace Holon
             // validate arguments
             if (body == null)
                 throw new ArgumentNullException(nameof(body), "The body cannot be null");
-            else if (ID == Guid.Empty || ReplyTo == null)
+            else if (ID == Guid.Empty)
                 throw new InvalidOperationException("The envelope does not have sufficient reply information");
 
             if (_channel != null)
@@ -151,7 +140,7 @@ namespace Holon
         /// </summary>
         /// <returns></returns>
         public Stream AsStream() {
-            return new MemoryStream(Body);
+            return new MemoryStream(_data);
         }
 
         /// <summary>
@@ -179,7 +168,7 @@ namespace Holon
         /// <param name="encoding">The string encoding.</param>
         /// <returns>The body string.</returns>
         public string AsString(Encoding encoding) {
-            return encoding.GetString(Body);
+            return encoding.GetString(_data);
         }
         #endregion
 
@@ -187,11 +176,7 @@ namespace Holon
         /// <summary>
         /// Creates a new envelope containing a message.
         /// </summary>
-        /// <param name="msg">The message.</param>
-        /// <param name="namespace">The namespace.</param>
-        internal Envelope(InboundMessage msg, Namespace @namespace) {
-            _msg = msg;
-            _namespace = @namespace;
+        internal Envelope() {
         }
         #endregion
     }

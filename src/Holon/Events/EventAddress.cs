@@ -7,11 +7,21 @@ namespace Holon.Events
     /// <summary>
     /// Represents an event address.
     /// </summary>
-    public class EventAddress : Address, IEquatable<EventAddress>
+    public class EventAddress : Address
     {
+        #region Fields
+        private int _namespaceLength;
+        private int _resourceIndex;
+        private int _resourceLength;
+        private int _nameIndex;
+        private int _nameLength;
+
+        private string _addr;
+        #endregion
+
         #region Properties
         /// <summary>
-        /// Gets the resource.
+        /// Gets the address resource.
         /// </summary>
         public string Resource {
             get {
@@ -20,17 +30,36 @@ namespace Holon.Events
         }
 
         /// <summary>
-        /// Gets the name.
+        /// Gets the address name.
         /// </summary>
         public string Name {
             get {
                 return _addr.Substring(_nameIndex, _nameLength);
             }
         }
+
+        /// <summary>
+        /// Gets the address namespace.
+        /// </summary>
+        public override string Namespace {
+            get {
+                throw new NotImplementedException();
+            }
+        }
+
+        /// <summary>
+        /// Gets the address key.
+        /// </summary>
+        public override string Key {
+            get {
+                throw new NotImplementedException();
+            }
+        }
         #endregion
 
         #region Methods
-        private bool InternalTryParse(string addr) {
+        internal override bool InternalTryParse(string addr)
+        {
             _addr = addr;
             int state = 0;
 
@@ -139,8 +168,9 @@ namespace Holon.Events
         /// Creates a new event address with the provided string representation.
         /// </summary>
         /// <param name="addr">The event address.</param>
-        public EventAddress(string addr)
-            : base(addr) { }
+        public EventAddress(string addr) {
+            _addr = addr;
+        }
 
         /// <summary>
         /// Creates a new event address with the provided string representation.
@@ -149,7 +179,7 @@ namespace Holon.Events
         /// <param name="resource">The resource name..</param>
         /// <param name="name">The event name.</param>
         public EventAddress(string @namespace, string resource, string name)
-            : base(@namespace, $"{resource}.{name}") { }
+            : this($"{@namespace}:{resource}.{name}") { }
         #endregion
     }
 }

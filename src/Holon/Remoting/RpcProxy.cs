@@ -148,16 +148,16 @@ namespace Holon.Remoting
                 }, _configuration.Timeout);
 
                 // transform response
-                byte[] responseBody = res.Body;
+                byte[] responseBody = res.Data;
 
                 // try and get response header
-                if (!res.Headers.TryGetValue(RpcHeader.HEADER_NAME, out object resHeaderData)) {
+                if (!res.Headers.TryGetValue(RpcHeader.HEADER_NAME, out string resHeaderData)) {
                     if (!res.Headers.TryGetValue(RpcHeader.HEADER_NAME_LEGACY, out resHeaderData)) {
                         throw new InvalidOperationException("The response envelope is not a valid RPC message");
                     }
                 }
                    
-                RpcHeader resHeader = new RpcHeader(Encoding.UTF8.GetString(resHeaderData as byte[]));
+                RpcHeader resHeader = new RpcHeader(resHeaderData);
 
                 // deserialize response
                 if (!RpcSerializer.Serializers.TryGetValue(resHeader.Serializer, out IRpcSerializer deserializer))
