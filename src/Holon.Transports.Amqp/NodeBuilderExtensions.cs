@@ -9,17 +9,14 @@ namespace Holon.Transports.Amqp
     /// </summary>
     public static class NodeBuilderExtensions
     {
-        private const string EndpointEnvironmentVariable = "BROKER_ENDPOINT";
-
         /// <summary>
-        /// Adds an AMQP transport to the node using environment variables.
+        /// Adds an AMQP transport to the node.
         /// </summary>
         /// <param name="nodeBuilder">The node builder.</param>
-        /// <param name="configuration">The configuration.</param>
+        /// <param name="endpoint">The endpoint.</param>
         /// <returns>The node builder.</returns>
-        public static NodeBuilder AddAmqp(this NodeBuilder nodeBuilder, Action<NodeBuilder, AmqpTransport> configuration = null)
-        {
-            return AddAmqp(nodeBuilder, new Uri(Environment.GetEnvironmentVariable(EndpointEnvironmentVariable)), configuration);
+        public static NodeBuilder AddAmqp(this NodeBuilder nodeBuilder, Uri endpoint) {
+            return AddAmqp(nodeBuilder, endpoint, null);
         }
 
         /// <summary>
@@ -27,16 +24,10 @@ namespace Holon.Transports.Amqp
         /// </summary>
         /// <param name="nodeBuilder">The node builder.</param>
         /// <param name="endpoint">The endpoint.</param>
-        /// <param name="configuration">The configuration.</param>
-        /// <returns></returns>
-        public static NodeBuilder AddAmqp(this NodeBuilder nodeBuilder, Uri endpoint, Action<NodeBuilder, AmqpTransport> configuration = null)
-        {
-            AmqpTransport amqpTransport = new AmqpTransport();
-
-            // add configuration if present
-            configuration?.Invoke(nodeBuilder, amqpTransport);
-
-            return nodeBuilder.Transport(amqpTransport);
+        /// <param name="name">The name.</param>
+        /// <returns>The node builder.</returns>
+        public static NodeBuilder AddAmqp(this NodeBuilder nodeBuilder, Uri endpoint, string name) {
+            return nodeBuilder.AddTransport(new AmqpTransport(), name);
         }
     }
 }

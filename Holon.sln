@@ -11,6 +11,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Example.General", "samples\
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{CDD9FE60-439B-4321-864D-0DB375151206}"
 	ProjectSection(SolutionItems) = preProject
+		samples\Example.General\Program.cs = samples\Example.General\Program.cs
 		README.md = README.md
 	EndProjectSection
 EndProject

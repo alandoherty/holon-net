@@ -9,9 +9,8 @@ namespace Holon.Lambda
     /// </summary>
     public static class NodeBuilderExtensions
     {
-        public static NodeBuilder AddLambda(this NodeBuilder nodeBuilder)
-        {
-            return nodeBuilder.Transport(new LambdaTransport());
+        public static NodeBuilder AddLambda(this NodeBuilder nodeBuilder)  {
+            return nodeBuilder.AddTransport(new LambdaTransport());
         }
     }
 }

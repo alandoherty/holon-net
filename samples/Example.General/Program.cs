@@ -71,10 +71,9 @@ namespace Example.General
         static async Task Main(string[] args) {
             // build node
             NodeBuilder nodeBuilder = new NodeBuilder()
-                .WithApplicationId("test")
-                .AddVirtual()
-                .AddAmqp(new Uri("amqp://localhost"))
-                .All<VirtualTransport>();
+                .AddVirtual("virtual")
+                .AddAmqp(new Uri("amqp://localhost"), "amqp")
+                .Rule(;
 
             Node node = nodeBuilder.Build();
 

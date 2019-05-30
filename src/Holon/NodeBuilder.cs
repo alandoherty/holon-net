@@ -13,58 +13,78 @@ namespace Holon
     /// </summary>
     public class NodeBuilder
     {
+        #region Fields
         private List<RoutingRule> _rules = new List<RoutingRule>();
         private List<Transport> _transports = new List<Transport>();
         private NodeConfiguration _configuration = new NodeConfiguration() {
             ApplicationId = "holon-app",
             ApplicationVersion = "1.0.0"
         };
+        #endregion
 
         #region Methods
         /// <summary>
-        /// Adds a routing rule for this node.
+        /// Routes all requests to the specified transport type, there must be exactly one of the specified type.
+        /// </summary>
+        /// <typeparam name="TTransport">The transport type.</typeparam>
+        /// <returns>The node builder.</returns>
+        public NodeBuilder RouteAll<TTransport>()
+            where TTransport : Transport {
+            Transport transport = _transports.Single(t => t is TTransport);
+            return Route(new FunctionRule(s => new RoutingResult(transport))); 
+        }
+
+        /// <summary>
+        /// Routes all requests to the specified transport by name.
+        /// </summary>
+        /// <param name="name">The name.</param>
+        /// <returns>The node builder.</returns>
+        public NodeBuilder RouteAll(string name) {
+            Transport transport = _transports.Single(t => t.Name == name);
+            return Route(new FunctionRule(s => new RoutingResult(transport)));
+        }
+
+        /// <summary>
+        /// Routes all requests according to the specified rule.
         /// </summary>
         /// <param name="rule">The rule.</param>
         /// <returns>The node builder.</returns>
-        public NodeBuilder Rule(RoutingRule rule)
+        public NodeBuilder Route(RoutingRule rule)
         {
             _rules.Add(rule);
             return this;
         }
 
         /// <summary>
-        /// Adds a catch all routing rule. There must be exactly one of the transport registered.
-        /// </summary>
-        /// <typeparam name="TTransport">The transport type.</typeparam>
-        /// <returns>The node builder.</returns>
-        public NodeBuilder All<TTransport>()
-            where TTransport : Transport
-        {
-            Transport transport = _transports.Single(t => t is TTransport);
-            return Rule(new FunctionRule(s => new RoutingResult(transport)));
-        }
-
-        /// <summary>
-        /// Adds a regex routing rule for the specified transport. There must be exactly one of the transport registered.
+        /// Routes requests that match the regex to the specified transport type, there must be exactly one of the specified type.
         /// </summary>
         /// <typeparam name="TTransport">The transport type.</typeparam>
         /// <param name="regex">The regex.</param>
         /// <returns>The node builder.</returns>
-        public NodeBuilder Rule<TTransport>(Regex regex)
-            where TTransport : Transport
-        {
-            return Rule(new RegexRule(regex, _transports.Single(t => t is TTransport)));
+        public NodeBuilder RouteRegex<TTransport>(Regex regex)
+            where TTransport : Transport  {
+            return RouteRegex(new RegexRule(regex, _transports.Single(t => t is TTransport)));
         }
 
         /// <summary>
-        /// Adds a regex routing rule for this node.
+        /// Routes requests that match the regex to the transport by name.
+        /// </summary>
+        /// <param name="regex">The regex.</param>
+        /// <param name="name">The name.</param>
+        /// <returns>The node builder.</returns>
+        public NodeBuilder RouteRegex(Regex regex, string name) {
+            return RouteRegex(new RegexRule(regex, _transports.Single(t => t.Name == name)));
+        }
+
+        /// <summary>
+        /// Routes requests that match the regex to the specified transport.
         /// </summary>
         /// <param name="regex">The regex</param>
         /// <param name="transport">The transport.</param>
         /// <returns>The node builder.</returns>
-        public NodeBuilder Rule(Regex regex, Transport transport)
+        public NodeBuilder RouteRegex(Regex regex, Transport transport)
         {
-            return Rule(new RegexRule(regex, transport));
+            return RouteRegex(new RegexRule(regex, transport));
         }
 
         /// <summary>
@@ -87,7 +107,7 @@ namespace Holon
         {
             if (_configuration == null)
                 throw new ArgumentNullException(nameof(configuration), "The configuration cannot be null");
-
+            
             _configuration = configuration;
             return this;
         }
@@ -119,8 +139,18 @@ namespace Holon
         /// </summary>
         /// <param name="transport">The transport.</param>
         /// <returns>The node builder.</returns>
-        public NodeBuilder Transport(Transport transport)
-        {
+        public NodeBuilder AddTransport(Transport transport) {
+            return AddTransport(transport, null);
+        }
+
+        /// <summary>
+        /// Adds the specified transport to the node, you may add multiple of the same type.
+        /// </summary>
+        /// <param name="transport">The transport.</param>
+        /// <param name="name">The name.</param>
+        /// <returns>The node builder.</returns>
+        public NodeBuilder AddTransport(Transport transport, string name) {
+            transport.Name = name;
             _transports.Add(transport);
             return this;
         }
@@ -128,31 +158,17 @@ namespace Holon
         /// <summary>
         /// Adds a virtual transport to the node.
         /// </summary>
-        /// <param name="configuration">The optional configuration.</param>
         /// <returns>The node builder.</returns>
-        public NodeBuilder AddVirtual(Action<NodeBuilder, VirtualTransport> configuration = null)
-        {
-            VirtualTransport virtualTransport = new VirtualTransport();
-
-            // add configuration if present
-            configuration?.Invoke(this, virtualTransport);
-
-            return Transport(virtualTransport);
+        public NodeBuilder AddVirtual() {
+            return AddVirtual(null);
         }
 
         /// <summary>
-        /// Adds the specified transport to the node, you may add multiple of the same type.
+        /// Adds a virtual transport to the node.
         /// </summary>
-        /// <param name="transport">The transport.</param>
         /// <returns>The node builder.</returns>
-        public NodeBuilder Transport<TTransport>(Transport transport)
-            where TTransport : Transport, new()
-        {
-            if (_transports.Any(t => t is TTransport))
-                throw new InvalidOperationException("You can not add two of the same transport via activation");
-
-            _transports.Add(transport);
-            return this;
+        public NodeBuilder AddVirtual(string name) {
+            return AddTransport(new VirtualTransport(), name);
         }
 
         /// <summary>
@@ -167,8 +183,7 @@ namespace Holon
             node._transports = _transports;
 
             // assign transports to the node
-            foreach(Transport transport in node._transports)
-            {
+            foreach(Transport transport in node._transports) {
                 if (transport.Node != null)
                     throw new InvalidOperationException("The transport is already attached to another node");
 
