@@ -13,7 +13,7 @@ namespace Holon.Services
     /// <summary>
     /// Represents an service.
     /// </summary>
-    public sealed class Service : IDisposable, IObserver<Envelope>
+    public abstract class Service : IDisposable, IObserver<Envelope>
     {
         #region Fields
         private ServiceAddress _addr;
@@ -75,6 +75,15 @@ namespace Holon.Services
         public ServiceExecution Execution {
             get {
                 return _configuration.Execution;
+            }
+        }
+
+        /// <summary>
+        /// Gets the service configuration.
+        /// </summary>
+        protected ServiceConfiguration Configuration {
+            get {
+                return _configuration;
             }
         }
 
@@ -163,56 +172,7 @@ namespace Holon.Services
         }
 
         /*
-        /// <summary>
-        /// Creates the queue and internal consumer for this service.
-        /// </summary>
-        /// <param name="broker">The broker.</param>
-        /// <exception cref="InvalidOperationException">If the queue already exists.</exception>
-        /// <returns></returns>
-        internal async Task<BrokerQueue> SetupAsync(Broker broker) {
-            // check if queue has already been created
-            if (_queue != null)
-                throw new InvalidOperationException("The broker queue has already been created");
-
-            // set broker
-            _broker = broker;
-
-            // create queue
-            _broker.DeclareExchange(_addr.Namespace, "topic", true, false);
-
-            // check if already declared
-            if (_namespace.Node.Services.Any(s => s.Type == ServiceType.Singleton && s._addr == _addr))
-                throw new InvalidOperationException("The service is already in use as a singleton");
-
-            if (Type == ServiceType.Singleton) {
-                // declare one exclusive queue
-                _queue = await _broker.CreateQueueAsync(_addr.ToString(), false, true, _addr.Namespace, _addr.RoutingKey).ConfigureAwait(false);
-            } else if (Type == ServiceType.Fanout) {
-                // declare queue with unique name
-                using (RandomNumberGenerator rng = RandomNumberGenerator.Create()) {
-                    // get unique string
-                    byte[] uniqueId = new byte[20];
-                    rng.GetBytes(uniqueId);
-                    string uniqueIdStr = BitConverter.ToString(uniqueId).Replace("-", "").ToLower();
-
-                    _queue = await _broker.CreateQueueAsync(string.Format("{0}%{1}", _addr.ToString(), uniqueIdStr), false, false, _addr.Namespace, _addr.RoutingKey).ConfigureAwait(false);
-                }
-            } else if (Type == ServiceType.Balanced) {
-                // declare one queue shared between many
-                _queue = await _broker.CreateQueueAsync(_addr.ToString(), false, false, _addr.Namespace, _addr.RoutingKey).ConfigureAwait(false);
-            }
-
-            // setup semaphore
-            _concurrencySlim = new SemaphoreSlim(_configuration.MaxConcurrency, _configuration.MaxConcurrency);
-
-            // begin observing
-            _queue.AsObservable().Subscribe(this);
-
-            // set uptime
-            _timeSetup = DateTimeOffset.UtcNow;
-
-            return _queue;
-        }
+        
         */
         /// <summary>
         /// Explicitly binds this service to another routing key in the namespace.
@@ -351,7 +311,14 @@ namespace Holon.Services
         #endregion
 
         #region Constructors
-        internal Service(Transport transport, ServiceAddress addr, ServiceBehaviour behaviour, ServiceConfiguration configuration) {
+        /// <summary>
+        /// Creates a new service.
+        /// </summary>
+        /// <param name="transport">The transport.</param>
+        /// <param name="addr">The service address.</param>
+        /// <param name="behaviour">The behaviour.</param>
+        /// <param name="configuration">The configuration.</param>
+        protected Service(Transport transport, ServiceAddress addr, ServiceBehaviour behaviour, ServiceConfiguration configuration) {
             if (configuration == null)
                 throw new ArgumentNullException(nameof(configuration));
             

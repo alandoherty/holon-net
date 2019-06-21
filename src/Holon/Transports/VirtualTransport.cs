@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Holon.Events;
+using Holon.Services;
 
 namespace Holon.Transports
 {
@@ -57,12 +58,17 @@ namespace Holon.Transports
         /// </summary>
         public override bool CanAttach {
             get {
-                return false;
+                return true;
             }
         }
         #endregion
 
         #region Events
+        protected internal override Task<Service> AttachAsync(ServiceAddress addr, ServiceConfiguration configuration, ServiceBehaviour behaviour) {
+
+            return base.AttachAsync(addr, configuration, behaviour);
+        }
+
         /// <summary>
         /// Emits an event on the provided address.
         /// </summary>

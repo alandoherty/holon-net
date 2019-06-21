@@ -1,4 +1,5 @@
 ﻿using Holon.Events;
+using Holon.Services;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -84,6 +85,20 @@ namespace Holon
             }
         }
         #endregion
+
+        /// <summary>
+        /// Attaches a service on the provided address.
+        /// </summary>
+        /// <param name="addr">The service address.</param>
+        /// <param name="configuration">The service configuration.</param>
+        /// <param name="behaviour">The service behaviour.</param>
+        /// <returns>The attached service.</returns>
+        internal protected virtual Task<Service> AttachAsync(ServiceAddress addr, ServiceConfiguration configuration, ServiceBehaviour behaviour) {
+            if (CanAttach)
+                throw new NotImplementedException();
+            else
+                throw new NotSupportedException("This transport does not support attaching services");
+        }
 
         /// <summary>
         /// Emits an event on the provided address.

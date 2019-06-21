@@ -73,13 +73,9 @@ namespace Example.General
             NodeBuilder nodeBuilder = new NodeBuilder()
                 .AddVirtual("virtual")
                 .AddAmqp(new Uri("amqp://localhost"), "amqp")
-                .Rule(;
+                .RouteAll("amqp");
 
             Node node = nodeBuilder.Build();
-
-
-            // wait forever
-            await Task.Delay(Timeout.InfiniteTimeSpan);
 
             // attach
             Service service = null;

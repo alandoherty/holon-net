@@ -61,9 +61,9 @@ namespace Holon
         /// <typeparam name="TTransport">The transport type.</typeparam>
         /// <param name="regex">The regex.</param>
         /// <returns>The node builder.</returns>
-        public NodeBuilder RouteRegex<TTransport>(Regex regex)
+        public NodeBuilder RoutePattern<TTransport>(Regex regex)
             where TTransport : Transport  {
-            return RouteRegex(new RegexRule(regex, _transports.Single(t => t is TTransport)));
+            return Route(new RegexRule(regex, _transports.Single(t => t is TTransport)));
         }
 
         /// <summary>
@@ -72,8 +72,8 @@ namespace Holon
         /// <param name="regex">The regex.</param>
         /// <param name="name">The name.</param>
         /// <returns>The node builder.</returns>
-        public NodeBuilder RouteRegex(Regex regex, string name) {
-            return RouteRegex(new RegexRule(regex, _transports.Single(t => t.Name == name)));
+        public NodeBuilder RoutePattern(Regex regex, string name) {
+            return Route(new RegexRule(regex, _transports.Single(t => t.Name == name)));
         }
 
         /// <summary>
@@ -82,9 +82,9 @@ namespace Holon
         /// <param name="regex">The regex</param>
         /// <param name="transport">The transport.</param>
         /// <returns>The node builder.</returns>
-        public NodeBuilder RouteRegex(Regex regex, Transport transport)
+        public NodeBuilder RoutePattern(Regex regex, Transport transport)
         {
-            return RouteRegex(new RegexRule(regex, transport));
+            return Route(new RegexRule(regex, transport));
         }
 
         /// <summary>
@@ -92,9 +92,9 @@ namespace Holon
         /// </summary>
         /// <param name="func">The function.</param>
         /// <returns>The node builder.</returns>
-        public NodeBuilder Rule(Func<Address, RoutingResult> func)
+        public NodeBuilder RouteFunction(Func<Address, RoutingResult> func)
         {
-            return Rule(new FunctionRule(func));
+            return Route(new FunctionRule(func));
         }
 
         /// <summary>

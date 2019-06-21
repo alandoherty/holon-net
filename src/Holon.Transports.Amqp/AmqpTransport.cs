@@ -30,6 +30,53 @@ namespace Holon.Transports.Amqp
         private List<string> _declaredEventNamespaces = new List<string>();
         #endregion
 
+        #region Properties
+        /// <summary>
+        /// Gets if this transport supports emitting events.
+        /// </summary>
+        public override bool CanEmit {
+            get {
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// Gets if this transport supports subscribing to events.
+        /// </summary>
+        public override bool CanSubscribe {
+            get {
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// Gets if this transport supports sending messages.
+        /// </summary>
+        public override bool CanSend {
+            get {
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// Gets if this transports supports request/response messages.
+        /// </summary>
+        public override bool CanAsk {
+            get {
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// Gets if this transport supports attaching services.
+        /// </summary>
+        public override bool CanAttach {
+            get {
+                return true;
+            }
+        }
+        #endregion
+
         #region Methods
         /// <summary>
         /// Broadcasts the message to the provided service address and waits for any responses within the timeout.
@@ -157,17 +204,6 @@ namespace Holon.Transports.Amqp
             {
                 throw new InvalidOperationException("Failed to create node reply queue", ex);
             }
-        }
-
-        /// <summary>
-        /// Setup the service on this namespace.
-        /// </summary>
-        /// <param name="service">The service.</param>
-        /// <returns></returns>
-        public async Task SetupServiceAsync(Service service)
-        {
-            throw new NotImplementedException();
-            //await service.SetupAsync(_broker).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -508,6 +544,11 @@ namespace Holon.Transports.Amqp
 
             // create subscription
             return new AmqpEventSubscription(addr, this, brokerQueue);
+        }
+
+        protected override Task<Service> AttachAsync(ServiceAddress addr, ServiceConfiguration configuration, ServiceBehaviour behaviour) {
+            AmqpService service = new AmqpService(this, addr, behaviour, configuration);
+            return Task.FromResult((Service)service);
         }
         #endregion
 

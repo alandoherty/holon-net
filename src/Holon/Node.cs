@@ -485,25 +485,27 @@ namespace Holon
         /// <param name="behaviour">The service behaviour.</param>
         /// <returns>The attached service.</returns>
         public async Task<Service> AttachAsync(ServiceAddress addr, ServiceConfiguration configuration, ServiceBehaviour behaviour) {
-            // get namespace
-            /*Namespace @namespace = GetNamespace(addr.Namespace);
+            // find a rule which matches this address
+            RoutingResult result = _rules.Select(r => r.Execute(addr))
+                .Where(r => r.Matched)
+                .FirstOrDefault();
 
-            // create service
-            Service service = new Service(@namespace, addr, behaviour, configuration);
+            // check if not matched
+            if (!result.Matched)
+                throw new UnroutableException(result.TranslatedAddress ?? addr, "The service attachment cannot be routed");
 
-            if (_configuration.ThrowUnhandledExceptions) {
-                service.UnhandledException += (o, e) => throw e.Exception;
+            // attach to transport
+            Service service = await result.Transport.AttachAsync(addr, configuration, behaviour)
+                .ConfigureAwait(false);
+
+            // add service
+            lock(_services) {
+                List<Service> services = new List<Service>(_services);
+                services.Add(service);
+                _services = services;
             }
 
-            // setup service
-            await @namespace.SetupServiceAsync(service).ConfigureAwait(false);
-
-            lock (_services) {
-                _services.Add(service);
-            }
-
-            return service;*/
-            throw new NotImplementedException();
+            return service;
         }
 
         /// <summary>
