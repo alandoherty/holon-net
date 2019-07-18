@@ -3,6 +3,7 @@ using Holon.Services;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Holon
@@ -85,6 +86,20 @@ namespace Holon
             }
         }
         #endregion
+
+        /// <summary>
+        /// Sends the envelope message to the provided service address and waits for a response.
+        /// </summary>
+        /// <param name="message">The message.</param>
+        /// <param name="timeout">The timeout.</param>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns>The response.</returns>
+        internal protected virtual Task<Envelope> AskAsync(Message message, TimeSpan timeout, CancellationToken cancellationToken = default(CancellationToken)) {
+            if (CanAsk)
+                throw new NotImplementedException();
+            else
+                throw new NotSupportedException("This transport does not support ask requests");
+        }
 
         /// <summary>
         /// Sends the envelope message to the provided service address.

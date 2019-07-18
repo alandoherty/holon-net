@@ -9,6 +9,9 @@ namespace Holon.Transports.Lambda
     /// </summary>
     public class MessageContext
     {
-        public Dictionary<string, string> Headers { get; set; }
+        /// <summary>
+        /// Gets or sets the headers.
+        /// </summary>
+        public IDictionary<string, string> Headers { get; set; }
     }
 }

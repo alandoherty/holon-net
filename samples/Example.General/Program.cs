@@ -76,14 +76,16 @@ namespace Example.General
             NodeBuilder nodeBuilder = new NodeBuilder()
                 .AddVirtual("virtual")
                 .AddAmqp(new Uri("amqp://localhost"), "amqp")
-                .AddLambda(new AmazonLambdaClient(RegionEndpoint.EUWest1), "lambda")
+                .AddLambda(new AmazonLambdaClient(Environment.GetEnvironmentVariable("AWS_ACCESS_KEY_ID"), Environment.GetEnvironmentVariable("AWS_SECRET_KEY"), RegionEndpoint.EUWest1), "lambda")
                 .RouteAll("lambda");
 
             Node node = nodeBuilder.Build();
 
-            await node.SendAsync(new Message() {
-                Address = new ServiceAddress("lambda:holontest"),
-                Body = new byte[0]
+            ITest001 test = node.Proxy<ITest001>("lambda:holontest");
+
+            await test.Login(new LoginRequestMsg() {
+                Password = "wow",
+                Username = "wow"
             });
 
             // attach

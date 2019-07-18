@@ -118,6 +118,9 @@ namespace Holon.Services
         /// <param name="addr">The service address.</param>
         public ServiceAddress(string addr) {
             _addr = addr;
+
+            if (!InternalTryParse(addr))
+                throw new FormatException("The service address format is invalid");
         }
 
         /// <summary>

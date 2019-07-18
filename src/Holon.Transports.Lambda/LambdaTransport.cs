@@ -2,7 +2,9 @@
 using Amazon.Lambda.Model;
 using Newtonsoft.Json;
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -77,46 +79,38 @@ namespace Holon.Transports.Lambda
             }
         }
 
-        /// <summary>
-        /// Sends the envelope message to the provided service address.
-        /// </summary>
-        /// <param name="message">The message</param>
-        /// <returns></returns>
-        protected override async Task SendAsync(Message message)
-        {
+        private void ApplyInvoke(Message message, InvokeRequest req) {
             // get message format
             MessageFormat format = MessageFormat;
 
             // build the context
-            MessageContext context = null;
+            MessageContext context = new MessageContext {
+                Headers = message.Headers ?? new Dictionary<string, string>()
+            };
 
             // build the stream
-            MemoryStream bodyStream = new MemoryStream();
+            MemoryStream bodyStream = null;
 
-            if (format == MessageFormat.Raw || format == MessageFormat.RawContext) {
+            if (format == MessageFormat.Raw) {
                 bodyStream = new MemoryStream(message.Body);
             } else if (format == MessageFormat.Full) {
-                JsonConvert.SerializeObject(new MessageBody() {
+                byte[] bodyBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(new MessageBody() {
                     Body = Convert.ToBase64String(message.Body),
                     Version = 1,
                     Context = context
 #if DEBUG
-                }, Formatting.None);
+                }, Formatting.None));
 #else
-                }, Formatting.Indented);
+                }, Formatting.Indented));
 #endif
+
+                bodyStream = new MemoryStream(bodyBytes);
             } else {
                 throw new NotImplementedException("The message format is not implemented");
             }
 
-            // build the invoke request
-            InvokeRequest req = new InvokeRequest() {
-                FunctionName = message.Address.Key,
-                PayloadStream = bodyStream,
-                InvocationType = InvocationType.Event
-            };
-
-            if (format == MessageFormat.RawContext) {
+            // add the client context is required
+            if (format == MessageFormat.Raw) {
                 req.ClientContext = JsonConvert.SerializeObject(context
 #if DEBUG
                 , Formatting.None);
@@ -124,7 +118,23 @@ namespace Holon.Transports.Lambda
                 , Formatting.Indented);
 #endif
             }
+        }
 
+        /// <summary>
+        /// Sends the envelope message to the provided service address.
+        /// </summary>
+        /// <param name="message">The message</param>
+        /// <returns></returns>
+        protected override async Task SendAsync(Message message)
+        {
+            // build the invoke request
+            InvokeRequest req = new InvokeRequest() {
+                FunctionName = message.Address.Key,
+                InvocationType = InvocationType.Event
+            };
+
+            // applies the message to the invocation request
+            ApplyInvoke(message, req);
 
             // invoke the function
             await _client.InvokeAsync(req);
@@ -137,9 +147,21 @@ namespace Holon.Transports.Lambda
         /// <param name="timeout">The timeout.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns>The response.</returns>
-        public async Task<Envelope> AskAsync(Message message, TimeSpan timeout, CancellationToken cancellationToken = default(CancellationToken))
+        protected override async Task<Envelope> AskAsync(Message message, TimeSpan timeout, CancellationToken cancellationToken = default(CancellationToken))
         {
-            return null;
+            // build the invoke request
+            InvokeRequest req = new InvokeRequest() {
+                FunctionName = message.Address.Key,
+                InvocationType = InvocationType.RequestResponse
+            };
+
+            // applies the message to the invocation request
+            ApplyInvoke(message, req);
+
+            // invoke the function
+            InvokeResponse res = await _client.InvokeAsync(req);
+
+            throw new NotImplementedException();
         }
 
         /// <summary>

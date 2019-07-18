@@ -20,13 +20,8 @@ namespace Holon.Transports.Lambda
         Full = 0,
 
         /// <summary>
-        /// The raw body will be sent, which must be JSON and the client context will contain a <see cref="MessageContext"/> object. This should be used when communicating with non-Holon lambda functions.
+        /// Only the raw body will be sent, this must be JSON or Amazon will return an error. A <see cref="MessageContext"/> object will be sent as the client context. This should be used when communicating with non-Holon lambda functions.
         /// </summary>
-        RawContext = 1,
-
-        /// <summary>
-        /// Only the raw body will be sent, this must be JSON or Amazon will return an error. This should be used when communicating with non-Holon lambda functions.
-        /// </summary>
-        Raw = 2
+        Raw = 1
     }
 }
