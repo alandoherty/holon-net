@@ -19,7 +19,7 @@ namespace Holon
         /// <summary>
         /// Gets or sets the headers.
         /// </summary>
-        public IDictionary<string, object> Headers { get; set; }
+        public IDictionary<string, string> Headers { get; set; }
 
         /// <summary>
         /// Gets or sets the address.
@@ -31,13 +31,13 @@ namespace Holon
         /// </summary>
         public string TraceId {
             get {
-                if (Headers.TryGetValue(TraceHeader.HeaderName, out object traceId))
-                    return Encoding.UTF8.GetString(traceId as byte[]);
+                if (Headers.TryGetValue(TraceHeader.HeaderName, out string traceId))
+                    return traceId;
                 else
                     return null;
             } set {
                 if (value != null)
-                    Headers[TraceHeader.HeaderName] = Encoding.UTF8.GetBytes(value);
+                    Headers[TraceHeader.HeaderName] = value;
                 else
                     Headers.Remove(TraceHeader.HeaderName);
             }
@@ -49,7 +49,7 @@ namespace Holon
         /// <param name="address">The address.</param>
         /// <param name="body">The body.</param>
         /// <param name="headers">The headers.</param>
-        public Message(ServiceAddress address, byte[] body, IDictionary<string, object> headers = null) {
+        public Message(ServiceAddress address, byte[] body, IDictionary<string, string> headers = null) {
             Address = address;
             Body = body;
             Headers = headers;
@@ -61,7 +61,7 @@ namespace Holon
         /// <param name="address">The address.</param>
         /// <param name="body">The body.</param>
         /// <param name="headers">The headers.</param>
-        public Message(string address, byte[] body, IDictionary<string, object> headers = null)
+        public Message(string address, byte[] body, IDictionary<string, string> headers = null)
             : this(new ServiceAddress(address), body, headers) {
         }
     }

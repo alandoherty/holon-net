@@ -96,10 +96,10 @@ namespace Holon.Transports.Amqp
 
             // add timeout header
             if (message.Headers == null)
-                message.Headers = new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase);
+                message.Headers = new Dictionary<string, string>(StringComparer.CurrentCultureIgnoreCase);
 
             if (!message.Headers.ContainsKey("x-message-ttl"))
-                message.Headers["x-message-ttl"] = timeout.TotalSeconds;
+                message.Headers["x-message-ttl"] = timeout.TotalSeconds.ToString();
 
             // send
             await _broker.SendAsync(message.Address.Namespace, message.Address.Key, message.Body, message.Headers, _replyQueue.Name, envelopeId.ToString()).ConfigureAwait(false);
@@ -116,9 +116,9 @@ namespace Holon.Transports.Amqp
         /// <param name="body">The body.</param>
         /// <param name="headers">The headers.</param>
         /// <returns></returns>
-        internal Task ReplyAsync(string replyTo, Guid replyId, byte[] body, IDictionary<string, object> headers = null)
+        internal Task ReplyAsync(string replyTo, Guid replyId, byte[] body, IDictionary<string, string> headers = null)
         {
-            return _broker.SendAsync("", replyTo, body, headers ?? new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase), null, replyId.ToString());
+            return _broker.SendAsync("", replyTo, body, headers ?? new Dictionary<string, string>(StringComparer.CurrentCultureIgnoreCase), null, replyId.ToString());
         }
 
         /// <summary>
@@ -129,7 +129,7 @@ namespace Holon.Transports.Amqp
         public Task SendAsync(IEnumerable<Message> messages)
         {
             return _broker.SendAsync(messages.Select(m => {
-                return new OutboundMessage(m.Address.Namespace, m.Address.Key, m.Body, m.Headers ?? new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase), null, null);
+                return new OutboundMessage(m.Address.Namespace, m.Address.Key, m.Body, m.Headers ?? new Dictionary<string, string>(StringComparer.CurrentCultureIgnoreCase), null, null);
             }));
         }
 
@@ -140,7 +140,7 @@ namespace Holon.Transports.Amqp
         /// <returns></returns>
         public Task SendAsync(Message message)
         {
-            return _broker.SendAsync(message.Address.Namespace, message.Address.Key, message.Body, message.Headers ?? new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase), null, null);
+            return _broker.SendAsync(message.Address.Namespace, message.Address.Key, message.Body, message.Headers ?? new Dictionary<string, string>(StringComparer.CurrentCultureIgnoreCase), null, null);
         }
 
         /// <summary>
@@ -221,9 +221,9 @@ namespace Holon.Transports.Amqp
 
             // add timeout header
             if (message.Headers == null)
-                message.Headers = new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase);
+                message.Headers = new Dictionary<string, string>(StringComparer.CurrentCultureIgnoreCase);
 
-            message.Headers["x-message-ttl"] = timeout.TotalSeconds;
+            message.Headers["x-message-ttl"] = timeout.TotalSeconds.ToString();
 
             // send
             await _broker.SendAsync(message.Address.Namespace, message.Address.Key, message.Body, message.Headers, _replyQueue.Name, envelopeId.ToString()).ConfigureAwait(false);
@@ -248,14 +248,14 @@ namespace Holon.Transports.Amqp
                 envelopeIDs[i] = Guid.NewGuid();
 
             // generate headers
-            IDictionary<string, object>[] envelopeHeaders = new IDictionary<string, object>[messages.Length];
+            IDictionary<string, string>[] envelopeHeaders = new IDictionary<string, string>[messages.Length];
 
             for (int i = 0; i < envelopeIDs.Length; i++)
             {
-                envelopeHeaders[i] = messages[i].Headers ?? new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase);
+                envelopeHeaders[i] = messages[i].Headers ?? new Dictionary<string, string>(StringComparer.CurrentCultureIgnoreCase);
 
                 if (!envelopeHeaders[i].ContainsKey("x-message-ttl"))
-                    envelopeHeaders[i]["x-message-ttl"] = timeout.TotalSeconds;
+                    envelopeHeaders[i]["x-message-ttl"] = timeout.TotalSeconds.ToString();
             }
 
             // setup receive handlers
@@ -266,7 +266,7 @@ namespace Holon.Transports.Amqp
 
             for (int i = 0; i < outboundMessages.Length; i++)
             {
-                outboundMessages[i] = new OutboundMessage(messages[i].Address.Namespace, messages[i].Address.Key, messages[i].Body, messages[i].Headers ?? new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase), _replyQueue.Name, envelopeIDs[i].ToString());
+                outboundMessages[i] = new OutboundMessage(messages[i].Address.Namespace, messages[i].Address.Key, messages[i].Body, messages[i].Headers ?? new Dictionary<string, string>(StringComparer.CurrentCultureIgnoreCase), _replyQueue.Name, envelopeIDs[i].ToString());
             }
 
             // send all messages
@@ -510,7 +510,7 @@ namespace Holon.Transports.Amqp
                 // send event
                 try
                 {
-                    await _broker.SendAsync(string.Format("!{0}", e.Address.Namespace), $"{e.Address.Resource}.{e.Address.Name}", body, new Dictionary<string, object>() {
+                    await _broker.SendAsync(string.Format("!{0}", e.Address.Namespace), $"{e.Address.Resource}.{e.Address.Name}", body, new Dictionary<string, string>() {
                     { AmqpEventHeader.HEADER_NAME, new AmqpEventHeader(AmqpEventHeader.HEADER_VERSION, "pbuf"/*serializer.Name*/).ToString() }
                 }, null, null, false).ConfigureAwait(false);
                 }
@@ -546,9 +546,21 @@ namespace Holon.Transports.Amqp
             return new AmqpEventSubscription(addr, this, brokerQueue);
         }
 
-        protected override Task<Service> AttachAsync(ServiceAddress addr, ServiceConfiguration configuration, ServiceBehaviour behaviour) {
+        /// <summary>
+        /// Attaches a service to the Amqp transport.
+        /// </summary>
+        /// <param name="addr">The service address.</param>
+        /// <param name="configuration">The configuration.</param>
+        /// <param name="behaviour">The behaviour.</param>
+        /// <returns></returns>
+        protected override async Task<Service> AttachAsync(ServiceAddress addr, ServiceConfiguration configuration, ServiceBehaviour behaviour) {
             AmqpService service = new AmqpService(this, addr, behaviour, configuration);
-            return Task.FromResult((Service)service);
+
+            // setup the service
+            await service.SetupAsync(_broker)
+                .ConfigureAwait(false);
+
+            return service;
         }
         #endregion
 

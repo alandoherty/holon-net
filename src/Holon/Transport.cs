@@ -87,6 +87,32 @@ namespace Holon
         #endregion
 
         /// <summary>
+        /// Sends the envelope message to the provided service address.
+        /// </summary>
+        /// <param name="message">The message.</param>
+        /// <returns></returns>
+        internal protected virtual Task SendAsync(Message message) {
+            if (CanSend)
+                throw new NotImplementedException();
+            else
+                throw new NotSupportedException("This transport does not support sending messages");
+        }
+
+        /// <summary>
+        /// Sends the envelope message to the provided service address.
+        /// </summary>
+        /// <param name="messages">The messages.</param>
+        /// <remarks>This method is optional to implement and should be used when an efficient way of bulk sending messages is possible.</remarks>
+        /// <returns></returns>
+        internal protected virtual async Task BulkSendAsync(IEnumerable<Message> messages) {
+            if (!CanSend)
+                throw new NotSupportedException("This transport does not support sending messages");
+
+            foreach (Message msg in messages)
+                await SendAsync(msg).ConfigureAwait(false);
+        }
+
+        /// <summary>
         /// Attaches a service on the provided address.
         /// </summary>
         /// <param name="addr">The service address.</param>

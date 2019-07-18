@@ -107,7 +107,7 @@ namespace Holon.Security
                     SecureHeader requestCertificate = new SecureHeader(SecureHeader.HeaderVersion, SecureMessageType.RequestCertificate);
 
                     // send request
-                    Envelope respondCert = await _node.AskAsync(_address, new byte[0], _configuration.HandshakeTimeout, new Dictionary<string, object>() {
+                    Envelope respondCert = await _node.AskAsync(_address, new byte[0], _configuration.HandshakeTimeout, new Dictionary<string, string>() {
                         { SecureHeader.HeaderName, requestCertificate.ToString() }
                     });
 
@@ -202,7 +202,7 @@ namespace Holon.Security
                         // encrypt with server certificate
                         byte[] keyRequestBody = rsa.Encrypt(ms.ToArray(), RSAEncryptionPadding.Pkcs1);
 
-                        respondKey = await _node.AskAsync(_address, keyRequestBody, _configuration.HandshakeTimeout, new Dictionary<string, object>() {
+                        respondKey = await _node.AskAsync(_address, keyRequestBody, _configuration.HandshakeTimeout, new Dictionary<string, string>() {
                             { SecureHeader.HeaderName, requestKey.ToString() }
                         });
                     }
@@ -356,7 +356,7 @@ namespace Holon.Security
 
             // add secure header
             if (message.Headers == null)
-                message.Headers = new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase);
+                message.Headers = new Dictionary<string, string>(StringComparer.CurrentCultureIgnoreCase);
 
             message.Headers[SecureHeader.HeaderName] = new SecureHeader(SecureHeader.HeaderVersion, SecureMessageType.RequestMessage).ToString();
             message.Address = _address;
@@ -422,7 +422,7 @@ namespace Holon.Security
 
             // add secure header
             if (message.Headers == null)
-                message.Headers = new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase);
+                message.Headers = new Dictionary<string, string>(StringComparer.CurrentCultureIgnoreCase);
 
             message.Headers[SecureHeader.HeaderName] = new SecureHeader(SecureHeader.HeaderVersion, SecureMessageType.RequestMessage).ToString();
 
@@ -481,7 +481,7 @@ namespace Holon.Security
 
             // add secure header
             if (message.Headers == null)
-                message.Headers = new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase);
+                message.Headers = new Dictionary<string, string>(StringComparer.CurrentCultureIgnoreCase);
 
             message.Headers[SecureHeader.HeaderName] = new SecureHeader(SecureHeader.HeaderVersion, SecureMessageType.RequestMessage).ToString();
             message.Address = _address;

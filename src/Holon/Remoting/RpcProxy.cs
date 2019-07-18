@@ -125,7 +125,7 @@ namespace Holon.Remoting
             RpcHeader header = new RpcHeader(RpcHeader.HEADER_VERSION, ProtobufRpcSerializer.SerializerName, RpcMessageType.Single);
 
             // create headers
-            IDictionary<string, object> headers = new Dictionary<string, object>() {
+            IDictionary<string, string> headers = new Dictionary<string, string>() {
                 { RpcHeader.HEADER_NAME, header.ToString() },
                 { RpcHeader.HEADER_NAME_LEGACY, header.ToString() }
             };

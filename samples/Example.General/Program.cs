@@ -7,6 +7,8 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Amazon;
+using Amazon.Lambda;
 using Holon;
 using Holon.Events;
 using Holon.Metrics;
@@ -16,6 +18,7 @@ using Holon.Security;
 using Holon.Services;
 using Holon.Transports;
 using Holon.Transports.Amqp;
+using Holon.Transports.Lambda;
 using ProtoBuf;
 
 namespace Example.General
@@ -73,18 +76,18 @@ namespace Example.General
             NodeBuilder nodeBuilder = new NodeBuilder()
                 .AddVirtual("virtual")
                 .AddAmqp(new Uri("amqp://localhost"), "amqp")
-                .RouteAll("amqp");
+                .AddLambda(new AmazonLambdaClient(RegionEndpoint.EUWest1), "lambda")
+                .RouteAll("lambda");
 
             Node node = nodeBuilder.Build();
 
+            await node.SendAsync(new Message() {
+                Address = new ServiceAddress("lambda:holontest"),
+                Body = new byte[0]
+            });
+
             // attach
-            Service service = null;
-            
-            try {
-                service = await node.AttachAsync("auth:login", ServiceType.Balanced, RpcBehaviour.Bind<ITest001>(new Test001(Guid.NewGuid())));
-            } catch(Exception) {
-                Console.WriteLine();
-            }
+            Service service = await node.AttachAsync("auth:login", ServiceType.Balanced, RpcBehaviour.Bind<ITest001>(new Test001(Guid.NewGuid())));
 
             // detaches the service
             await node.DetachAsync(service).ConfigureAwait(false);

@@ -16,7 +16,7 @@ namespace Holon.Transports.Amqp.Protocol
         private string _replyId;
         private string _exchange;
         private string _routingKey;
-        private IDictionary<string, object> _headers;
+        private IDictionary<string, string> _headers;
         private bool _mandatory;
         #endregion
 
@@ -78,7 +78,7 @@ namespace Holon.Transports.Amqp.Protocol
         /// <summary>
         /// Gets the headers.
         /// </summary>
-        public IDictionary<string, object> Headers {
+        public IDictionary<string, string> Headers {
             get {
                 return _headers;
             }
@@ -96,7 +96,7 @@ namespace Holon.Transports.Amqp.Protocol
         /// <param name="replyTo">The reply queue.</param>
         /// <param name="replyId">The reply correlation ID.</param>
         /// <param name="mandatory">If the message is mandatory.</param>
-        internal OutboundMessage(string exchange, string routingKey, byte[] body, IDictionary<string, object> headers = null, string replyTo = null, string replyId = null, bool mandatory = true) {
+        internal OutboundMessage(string exchange, string routingKey, byte[] body, IDictionary<string, string> headers = null, string replyTo = null, string replyId = null, bool mandatory = true) {
             _exchange = exchange;
             _routingKey = routingKey;
             _body = body;

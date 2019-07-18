@@ -88,8 +88,16 @@ namespace Holon.Transports.Amqp.Protocol
 
                     if (message.ReplyTo != null)
                         properties.ReplyTo = message.ReplyTo;
-                    if (message.Headers != null)
-                        properties.Headers = message.Headers;
+
+                    if (message.Headers != null) {
+                        Dictionary<string, object> headers = new Dictionary<string, object>();
+
+                        foreach (var kv in message.Headers)
+                            headers[kv.Key] = kv.Value.ToString();
+
+                        properties.Headers = headers;
+                    }
+
                     if (message.ReplyID != null)
                         properties.CorrelationId = message.ReplyID.ToString();
 
@@ -114,8 +122,16 @@ namespace Holon.Transports.Amqp.Protocol
 
             if (message.ReplyTo != null)
                 properties.ReplyTo = message.ReplyTo;
-            if (message.Headers != null)
-                properties.Headers = message.Headers;
+
+            if (message.Headers != null) {
+                Dictionary<string, object> headers = new Dictionary<string, object>();
+
+                foreach (var kv in message.Headers)
+                    headers[kv.Key] = kv.Value.ToString();
+
+                properties.Headers = headers;
+            }
+
             if (message.ReplyID != null)
                 properties.CorrelationId = message.ReplyID.ToString();
 
@@ -136,7 +152,7 @@ namespace Holon.Transports.Amqp.Protocol
         /// <param name="body">The body.</param>
         /// <param name="mandatory">If the message is mandatory.</param>
         /// <returns></returns>
-        public Task SendAsync(string exchange, string routingKey, byte[] body, IDictionary<string, object> headers = null, string replyTo = null, string correlationId = null, bool mandatory = true) {
+        public Task SendAsync(string exchange, string routingKey, byte[] body, IDictionary<string, string> headers = null, string replyTo = null, string correlationId = null, bool mandatory = true) {
             return SendAsync(new OutboundMessage(exchange, routingKey, body, headers, replyTo, correlationId, mandatory));
         }
 

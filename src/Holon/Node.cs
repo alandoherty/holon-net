@@ -162,7 +162,7 @@ namespace Holon
 
         #region Service Messaging
         /// <summary>
-        /// Sends the message to the provided service address.
+        /// Sends the messages to their services.
         /// </summary>
         /// <param name="messages">The messages.</param>
         /// <returns>The number of messages which were successfully sent.</returns>
@@ -177,13 +177,20 @@ namespace Holon
         /// <returns></returns>
         public async Task<int> SendAsync(IEnumerable<Message> messages) {
             // build all the messages into the appropriate transports
-            Dictionary<Transport, List<Message>> messageRouting = null;
+            Dictionary<Transport, List<Message>> messageRouting = new Dictionary<Transport, List<Message>>();
             Transport lastTransport = null;
             List<Message> lastList = null;
             int total = 0;
 
             foreach (Message msg in messages) {
                 total++;
+
+                // validate message
+                if (msg.Address == null)
+                    throw new NullReferenceException("The message address cannot be null");
+
+                if (msg.Body == null)
+                    throw new NullReferenceException("The message body cannot be null");
 
                 // find a rule which matches this address
                 RoutingResult result = _rules.Select(r => r.Execute(msg.Address))
@@ -211,36 +218,11 @@ namespace Holon
 
             // emit all the messages, if we only have one transport we can make this slightly more efficient
             if (messageRouting.Count == 1) {
-                //await lastTransport.SendAsync(lastList).ConfigureAwait(false);
+                await lastTransport.SendAsync(lastList[0]).ConfigureAwait(false);
                 return total;
             } else {
-                // create a map between tasks and the lists so we can add up the successful total later
-                Dictionary<Task, List<Event>> tasks = new Dictionary<Task, List<Event>>();
-
-                foreach (var kv in messageRouting) {
-                    try {
-                        //tasks[kv.Key.EmitAsync(kv.Value)] = kv.Value;
-                    } catch (Exception) { }
-                }
-
-                // wait for all
-                try {
-                    await Task.WhenAll(tasks.Keys).ConfigureAwait(false);
-                } catch (Exception) { }
-
-                // add up the total number of successfully emitted events
-                return tasks.Where(kv => !kv.Key.IsFaulted)
-                    .Sum(kv => kv.Value.Count);
+                throw new NotImplementedException();
             }
-        }
-
-        /// <summary>
-        /// Sends the message to the provided service address.
-        /// </summary>
-        /// <param name="message">The message.</param>
-        /// <returns></returns>
-        public Task<int> SendAsync(Message message) {
-            return SendAsync(new Message[] { message });
         }
 
         /// <summary>
@@ -250,7 +232,7 @@ namespace Holon
         /// <param name="body">The body.</param>
         /// <param name="headers">The headers.</param>
         /// <returns></returns>
-        public Task<int> SendAsync(string addr, byte[] body, IDictionary<string, object> headers = null) {
+        public Task<int> SendAsync(string addr, byte[] body, IDictionary<string, string> headers = null) {
             return SendAsync(new Message() {
                 Address = new ServiceAddress(addr),
                 Body = body,
@@ -265,7 +247,7 @@ namespace Holon
         /// <param name="body">The body.</param>
         /// <param name="headers">The headers.</param>
         /// <returns></returns>
-        public Task<int> SendAsync(ServiceAddress addr, byte[] body, IDictionary<string, object> headers = null) {
+        public Task<int> SendAsync(ServiceAddress addr, byte[] body, IDictionary<string, string> headers = null) {
             return SendAsync(new Message() {
                 Address = addr,
                 Body = body,
@@ -297,7 +279,7 @@ namespace Holon
         /// <param name="headers">The headers.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns></returns>
-        public Task<Envelope> AskAsync(ServiceAddress addr, byte[] body, TimeSpan timeout, IDictionary<string, object> headers = null, CancellationToken cancellationToken = default(CancellationToken)) {
+        public Task<Envelope> AskAsync(ServiceAddress addr, byte[] body, TimeSpan timeout, IDictionary<string, string> headers = null, CancellationToken cancellationToken = default(CancellationToken)) {
             return AskAsync(new Message() {
                 Address = addr,
                 Body = body,
@@ -314,7 +296,7 @@ namespace Holon
         /// <param name="headers">The headers.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns></returns>
-        public Task<Envelope> AskAsync(string addr, byte[] body, TimeSpan timeout, IDictionary<string, object> headers = null, CancellationToken cancellationToken = default(CancellationToken)) {
+        public Task<Envelope> AskAsync(string addr, byte[] body, TimeSpan timeout, IDictionary<string, string> headers = null, CancellationToken cancellationToken = default(CancellationToken)) {
             return AskAsync(new Message() {
                 Address = new ServiceAddress(addr),
                 Body = body,
@@ -331,7 +313,7 @@ namespace Holon
         /// <param name="headers">The headers.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns></returns>
-        public Task<Envelope[]> BroadcastAsync(ServiceAddress addr, byte[] body, TimeSpan timeout, IDictionary<string, object> headers = null, CancellationToken cancellationToken = default(CancellationToken)) {
+        public Task<Envelope[]> BroadcastAsync(ServiceAddress addr, byte[] body, TimeSpan timeout, IDictionary<string, string> headers = null, CancellationToken cancellationToken = default(CancellationToken)) {
             return BroadcastAsync(new Message() {
                 Address = addr,
                 Body = body,
@@ -362,7 +344,7 @@ namespace Holon
         /// <param name="headers">The headers.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns></returns>
-        public Task<Envelope[]> BroadcastAsync(string addr, byte[] body, TimeSpan timeout, IDictionary<string, object> headers = null, CancellationToken cancellationToken = default(CancellationToken)) {
+        public Task<Envelope[]> BroadcastAsync(string addr, byte[] body, TimeSpan timeout, IDictionary<string, string> headers = null, CancellationToken cancellationToken = default(CancellationToken)) {
             return BroadcastAsync(new Message() {
                 Address = new ServiceAddress(addr),
                 Body = body,

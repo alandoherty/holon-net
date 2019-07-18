@@ -31,7 +31,7 @@ namespace Holon.Events.Serializers
             using (MemoryStream ms = new MemoryStream(body)) {
                 EventMsg msg = Serializer.Deserialize<EventMsg>(ms);
 
-                ///TODO: update
+                //TODO: update
                 return null;
                 //return new Event(msg.ID, msg.Namespace, msg.Resource, msg.Name, msg.Data);
             }
