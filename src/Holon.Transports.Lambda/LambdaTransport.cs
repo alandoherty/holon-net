@@ -125,7 +125,7 @@ namespace Holon.Transports.Lambda
         /// </summary>
         /// <param name="message">The message</param>
         /// <returns></returns>
-        protected override async Task SendAsync(Message message)
+        protected override Task SendAsync(Message message)
         {
             // build the invoke request
             InvokeRequest req = new InvokeRequest() {
@@ -137,7 +137,7 @@ namespace Holon.Transports.Lambda
             ApplyInvoke(message, req);
 
             // invoke the function
-            await _client.InvokeAsync(req);
+            return _client.InvokeAsync(req);
         }
 
         /// <summary>
@@ -160,7 +160,16 @@ namespace Holon.Transports.Lambda
 
             // invoke the function
             InvokeResponse res = await _client.InvokeAsync(req);
+            string payload = Encoding.UTF8.GetString(res.Payload.ToArray());
 
+            if (res.FunctionError != null) {
+                // deserialize
+                LambdaError err = JsonConvert.DeserializeObject<LambdaError>(payload);
+
+                throw new Exception($"Exception occured in function, RequestId: {res.ResponseMetadata.RequestId} Message: {err.ErrorMessage}");
+            }
+
+            // process the response payload
             throw new NotImplementedException();
         }
 

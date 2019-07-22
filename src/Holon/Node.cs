@@ -263,11 +263,23 @@ namespace Holon
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns></returns>
         public Task<Envelope> AskAsync(Message message, TimeSpan timeout, CancellationToken cancellationToken = default(CancellationToken)) {
-            // get namespace
-            //Namespace @namespace = GetNamespace(message.Address.Namespace);
+            // validate message
+            if (message.Address == null)
+                throw new NullReferenceException("The message address cannot be null");
 
-            //return @namespace.AskAsync(message, timeout, cancellationToken);
-            throw new NotImplementedException();
+            if (message.Body == null)
+                throw new NullReferenceException("The message body cannot be null");
+
+            // find a rule which matches this address
+            RoutingResult result = _rules.Select(r => r.Execute(message.Address))
+                .Where(r => r.Matched)
+                .FirstOrDefault();
+
+            if (result.Matched) {
+                return result.Transport.AskAsync(message, timeout, cancellationToken);
+            } else {
+                throw new UnroutableException(message.Address, "The message could not be routed to the address");
+            }
         }
 
         /// <summary>
