@@ -30,15 +30,6 @@ namespace Holon
         Task<Envelope> AskAsync(Message message, TimeSpan timeout, CancellationToken cancellationToken = default(CancellationToken));
 
         /// <summary>
-        /// Broadcasts the envelope message to the provided service address and waits for any responses.
-        /// </summary>
-        /// <param name="message">The message.</param>
-        /// <param name="timeout">The timeout to receive all replies.</param>
-        /// <param name="cancellationToken">The cancellation token.</param>
-        /// <returns>The responses.</returns>
-        Task<Envelope[]> BroadcastAsync(Message message, TimeSpan timeout, CancellationToken cancellationToken = default(CancellationToken));
-
-        /// <summary>
         /// Gets an RPC proxy for the provided interface.
         /// </summary>
         /// <typeparam name="IT">The interface type.</typeparam>

@@ -36,19 +36,19 @@ namespace Example.General
     [RpcContract]
     interface ITest001
     {
-        [RpcOperation(NoReply = false)]
-        Task<string> Login(LoginRequestMsg login);
+        [RpcOperation(NoReply = true)]
+        Task Login(LoginRequestMsg login);
     }
 
     class Test001 : ITest001
     {
         private Guid _uuid;
 
-        public async Task<string> Login(LoginRequestMsg login) {
+        public async Task Login(LoginRequestMsg login) {
             Console.WriteLine($"Worker ({_uuid}) - Username: {login.Username} Password: {login.Password}");
             RpcContext context = RpcContext.Current;
 
-            return "Wow";
+            return;// "Wow";
         }
 
         public Test001(Guid uuid) {
@@ -75,13 +75,13 @@ namespace Example.General
             // build node
             NodeBuilder nodeBuilder = new NodeBuilder()
                 .AddVirtual("virtual")
-                .AddAmqp(new Uri("amqp://localhost"), "amqp")
+                .AddAmqp(new Uri("amqp://ec2-52-212-222-158.eu-west-1.compute.amazonaws.com"), "amqp")
                 .AddLambda(new AmazonLambdaClient(Environment.GetEnvironmentVariable("AWS_ACCESS_KEY_ID"), Environment.GetEnvironmentVariable("AWS_SECRET_KEY"), RegionEndpoint.EUWest1), "lambda")
-                .RouteAll("lambda");
+                .RouteAll("amqp");
 
             Node node = nodeBuilder.Build();
 
-            ITest001 test = node.Proxy<ITest001>("lambda:holontest");
+            ITest001 test = node.Proxy<ITest001>("node:holontest");
 
             await test.Login(new LoginRequestMsg() {
                 Password = "wow",

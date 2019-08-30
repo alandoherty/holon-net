@@ -190,6 +190,12 @@ namespace Holon
                 transport.Node = node;
             }
 
+            // call the on-build
+            // TODO: error catching and logging
+            foreach(Transport transport in node._transports) {
+                transport.OnBuild();
+            }
+
             return node;
         }
         #endregion

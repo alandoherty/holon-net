@@ -24,6 +24,15 @@ namespace Holon.Transports.Amqp.Protocol
 
         #region Properties
         /// <summary>
+        /// Gets if this broker is closed.
+        /// </summary>
+        public bool IsClosed {
+            get {
+                return _channel.IsClosed;
+            }
+        }
+
+        /// <summary>
         /// Gets the broker context.
         /// </summary>
         internal BrokerContext Context {

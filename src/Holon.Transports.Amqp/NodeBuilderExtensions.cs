@@ -27,7 +27,7 @@ namespace Holon.Transports.Amqp
         /// <param name="name">The name.</param>
         /// <returns>The node builder.</returns>
         public static NodeBuilder AddAmqp(this NodeBuilder nodeBuilder, Uri endpoint, string name) {
-            return nodeBuilder.AddTransport(new AmqpTransport(), name);
+            return nodeBuilder.AddTransport(new AmqpTransport(endpoint), name);
         }
     }
 }

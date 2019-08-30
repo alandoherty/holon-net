@@ -19,8 +19,6 @@ namespace Holon.Transports.Amqp
 
         private BrokerQueue _replyQueue;
 
-        private Uri _connectionUri;
-
         private volatile int _disposed;
 
 
@@ -28,6 +26,8 @@ namespace Holon.Transports.Amqp
         private Task _replyProcessor;
 
         private List<string> _declaredEventNamespaces = new List<string>();
+
+        private SemaphoreSlim _setupBrokerSemaphore = new SemaphoreSlim(1, 1);
         #endregion
 
         #region Properties
@@ -77,7 +77,111 @@ namespace Holon.Transports.Amqp
         }
         #endregion
 
+        #region Transport Methods
+        /// <summary>
+        /// Sends the message to the provided service address.
+        /// </summary>
+        /// <param name="messages">The messages.</param>
+        /// <returns></returns>
+        protected override async Task BulkSendAsync(IEnumerable<Message> messages) {
+            // setup the broker
+            if (ShouldSetupBroker())
+                await SetupBrokerAsync().ConfigureAwait(false);
+
+            // send the messages
+            await _broker.SendAsync(messages.Select(m => {
+                return new OutboundMessage(m.Address.Namespace, m.Address.Key, m.Body, m.Headers ?? new Dictionary<string, string>(StringComparer.CurrentCultureIgnoreCase), null, null);
+            })).ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Sends the message to the provided service address.
+        /// </summary>
+        /// <param name="message">The message.</param>
+        /// <returns></returns>
+        protected override async Task SendAsync(Message message) {
+            // setup the broker
+            if (ShouldSetupBroker())
+                await SetupBrokerAsync().ConfigureAwait(false);
+
+            // send the message
+            await _broker.SendAsync(message.Address.Namespace, message.Address.Key, message.Body, message.Headers ?? new Dictionary<string, string>(StringComparer.CurrentCultureIgnoreCase), null, null)
+                .ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Sends the message to the provided service address and waits for a response.
+        /// </summary>
+        /// <param name="message">The message.</param>
+        /// <param name="timeout">The timeout.</param>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns></returns>
+        protected async override Task<Envelope> AskAsync(Message message, TimeSpan timeout, CancellationToken cancellationToken = default(CancellationToken)) {
+            // setup the broker
+            if (ShouldSetupBroker())
+                await SetupBrokerAsync().ConfigureAwait(false);
+
+            // setup receive handler
+            Guid envelopeId = Guid.NewGuid();
+            Task<Envelope> envelopeWait = WaitReplyAsync(envelopeId, timeout, cancellationToken);
+
+            // add timeout header
+            if (message.Headers == null)
+                message.Headers = new Dictionary<string, string>(StringComparer.CurrentCultureIgnoreCase);
+
+            message.Headers["x-message-ttl"] = timeout.TotalSeconds.ToString();
+
+            // send
+            await _broker.SendAsync(message.Address.Namespace, message.Address.Key, message.Body, message.Headers, _replyQueue.Name, envelopeId.ToString()).ConfigureAwait(false);
+
+            // the actual receiver handler is setup since it's syncronous, but now we wait
+            return await envelopeWait.ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Subscribes to events matching the provided name.
+        /// </summary>
+        /// <param name="addr">The event address.</param>
+        /// <returns>The subscription.</returns>
+        protected override async Task<IEventSubscription> SubscribeAsync(EventAddress addr) {
+            // create the queue
+            _broker.DeclareExchange(string.Format("!{0}", addr.Namespace), "topic", false, false);
+            BrokerQueue brokerQueue = null;
+
+            // declare queue with unique name
+            using (RandomNumberGenerator rng = RandomNumberGenerator.Create()) {
+                // get unique string
+                byte[] uniqueId = new byte[20];
+                rng.GetBytes(uniqueId);
+                string uniqueIdStr = BitConverter.ToString(uniqueId).Replace("-", "").ToLower();
+
+                brokerQueue = await _broker.CreateQueueAsync(string.Format("!{0}%{1}", addr.ToString(), uniqueIdStr), false, true, string.Format("!{0}", addr.Namespace), $"{addr.Resource}.{addr.Name}", true, true).ConfigureAwait(false);
+            }
+
+            // create subscription
+            return new AmqpEventSubscription(addr, this, brokerQueue);
+        }
+
+        /// <summary>
+        /// Attaches a service to the Amqp transport.
+        /// </summary>
+        /// <param name="addr">The service address.</param>
+        /// <param name="configuration">The configuration.</param>
+        /// <param name="behaviour">The behaviour.</param>
+        /// <returns></returns>
+        protected override async Task<Service> AttachAsync(ServiceAddress addr, ServiceConfiguration configuration, ServiceBehaviour behaviour) {
+            AmqpService service = new AmqpService(this, addr, behaviour, configuration);
+
+            // setup the service
+            await service.SetupAsync(_broker)
+                .ConfigureAwait(false);
+
+            return service;
+        }
+        #endregion
+
         #region Methods
+        /*
         /// <summary>
         /// Broadcasts the message to the provided service address and waits for any responses within the timeout.
         /// </summary>
@@ -106,7 +210,7 @@ namespace Holon.Transports.Amqp
 
             // the actual receiver handler is setup since it's syncronous, but now we wait
             return await envelopeWait.ConfigureAwait(false);
-        }
+        }*/
 
         /// <summary>
         /// Replys to a message.
@@ -121,117 +225,7 @@ namespace Holon.Transports.Amqp
             return _broker.SendAsync("", replyTo, body, headers ?? new Dictionary<string, string>(StringComparer.CurrentCultureIgnoreCase), null, replyId.ToString());
         }
 
-        /// <summary>
-        /// Sends the message to the provided service address.
-        /// </summary>
-        /// <param name="messages">The messages.</param>
-        /// <returns></returns>
-        public Task SendAsync(IEnumerable<Message> messages)
-        {
-            return _broker.SendAsync(messages.Select(m => {
-                return new OutboundMessage(m.Address.Namespace, m.Address.Key, m.Body, m.Headers ?? new Dictionary<string, string>(StringComparer.CurrentCultureIgnoreCase), null, null);
-            }));
-        }
-
-        /// <summary>
-        /// Sends the message to the provided service address.
-        /// </summary>
-        /// <param name="message">The message.</param>
-        /// <returns></returns>
-        public Task SendAsync(Message message)
-        {
-            return _broker.SendAsync(message.Address.Namespace, message.Address.Key, message.Body, message.Headers ?? new Dictionary<string, string>(StringComparer.CurrentCultureIgnoreCase), null, null);
-        }
-
-        /// <summary>
-        /// Setup the namespace.
-        /// </summary>
-        /// <returns></returns>
-        public async Task SetupAsync()
-        {
-            // create broker context
-            _brokerContext = await BrokerContext.CreateAsync(_connectionUri.ToString());
-
-            // create broker
-            _broker = await _brokerContext.CreateBrokerAsync(Node.ApplicationId);
-
-            // add returned handler
-            _broker.Returned += delegate (object s, BrokerReturnedEventArgs e) {
-                if (e.ID != Guid.Empty)
-                {
-                    TaskCompletionSource<Envelope> tcs;
-
-                    lock (_replyWaits)
-                    {
-                        // try and get the reply wait
-                        if (!_replyWaits.TryGetValue(e.ID, out ReplyWait replyWait))
-                            return;
-
-                        // if this is a multi-reply do nothing
-                        if (replyWait.Results != null)
-                            return;
-
-                        // remove and set exception
-                        tcs = replyWait.CompletionSource;
-                        _replyWaits.Remove(e.ID);
-                    }
-
-                    tcs.TrySetException(new ServiceNotFoundException("The envelope was returned before delivery"));
-                }
-            };
-
-            // create reply queue
-            try
-            {
-                // declare queue with unique name
-                using (RandomNumberGenerator rng = RandomNumberGenerator.Create())
-                {
-                    // get unique string
-                    byte[] uniqueId = new byte[20];
-                    rng.GetBytes(uniqueId);
-                    string uniqueIdStr = BitConverter.ToString(uniqueId).Replace("-", "").ToLower();
-
-                    // add the reply queue
-                    _replyQueue = await _broker.CreateQueueAsync(string.Format("~reply:{1}%{0}", Node.UUID, uniqueIdStr), false, true, "", "", true, true, new Dictionary<string, object>() {
-                        { "x-expires", (int)TimeSpan.FromMinutes(15).TotalMilliseconds }
-                    }).ConfigureAwait(false);
-
-                    // subscribe to reply queue
-                    _replyQueue.AsObservable().Subscribe(new ReplyObserver(this));
-                }
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException("Failed to create node reply queue", ex);
-            }
-        }
-
-        /// <summary>
-        /// Sends the message to the provided service address and waits for a response.
-        /// </summary>
-        /// <param name="message">The message.</param>
-        /// <param name="timeout">The timeout.</param>
-        /// <param name="cancellationToken">The cancellation token.</param>
-        /// <returns></returns>
-        public async Task<Envelope> AskAsync(Message message, TimeSpan timeout, CancellationToken cancellationToken = default(CancellationToken))
-        {
-            // setup receive handler
-            Guid envelopeId = Guid.NewGuid();
-            Task<Envelope> envelopeWait = WaitReplyAsync(envelopeId, timeout, cancellationToken);
-
-            // add timeout header
-            if (message.Headers == null)
-                message.Headers = new Dictionary<string, string>(StringComparer.CurrentCultureIgnoreCase);
-
-            message.Headers["x-message-ttl"] = timeout.TotalSeconds.ToString();
-
-            // send
-            await _broker.SendAsync(message.Address.Namespace, message.Address.Key, message.Body, message.Headers, _replyQueue.Name, envelopeId.ToString()).ConfigureAwait(false);
-
-            // the actual receiver handler is setup since it's syncronous, but now we wait
-            return await envelopeWait.ConfigureAwait(false);
-        }
-
+        /*
         /// <summary>
         /// Sends the message to the provided service address and waits for a response.
         /// </summary>
@@ -275,6 +269,7 @@ namespace Holon.Transports.Amqp
             // return the waits for all
             return envelopeWaits;
         }
+        */
 
         /// <summary>
         /// Node worker to process reply messages.
@@ -425,19 +420,6 @@ namespace Holon.Transports.Amqp
         }
 
         /// <summary>
-        /// Dispose the namespace.
-        /// </summary>
-        public void Dispose()
-        {
-            // mark disposed
-            if (Interlocked.CompareExchange(ref _disposed, 1, 0) == 1)
-                return;
-
-            // dispose reply queue
-            _replyQueue.Dispose();
-        }
-
-        /// <summary>
         /// Declares the event, creating the namespace and storing the type for future reference.
         /// </summary>
         /// <param name="addr">The event address.</param>
@@ -519,49 +501,6 @@ namespace Holon.Transports.Amqp
 
             return events.Count();
         }
-
-        /// <summary>
-        /// Subscribes to events matching the provided name.
-        /// </summary>
-        /// <param name="addr">The event address.</param>
-        /// <returns>The subscription.</returns>
-        protected override async Task<IEventSubscription> SubscribeAsync(EventAddress addr)
-        {
-            // create the queue
-            _broker.DeclareExchange(string.Format("!{0}", addr.Namespace), "topic", false, false);
-            BrokerQueue brokerQueue = null;
-
-            // declare queue with unique name
-            using (RandomNumberGenerator rng = RandomNumberGenerator.Create())
-            {
-                // get unique string
-                byte[] uniqueId = new byte[20];
-                rng.GetBytes(uniqueId);
-                string uniqueIdStr = BitConverter.ToString(uniqueId).Replace("-", "").ToLower();
-
-                brokerQueue = await _broker.CreateQueueAsync(string.Format("!{0}%{1}", addr.ToString(), uniqueIdStr), false, true, string.Format("!{0}", addr.Namespace), $"{addr.Resource}.{addr.Name}", true, true).ConfigureAwait(false);
-            }
-
-            // create subscription
-            return new AmqpEventSubscription(addr, this, brokerQueue);
-        }
-
-        /// <summary>
-        /// Attaches a service to the Amqp transport.
-        /// </summary>
-        /// <param name="addr">The service address.</param>
-        /// <param name="configuration">The configuration.</param>
-        /// <param name="behaviour">The behaviour.</param>
-        /// <returns></returns>
-        protected override async Task<Service> AttachAsync(ServiceAddress addr, ServiceConfiguration configuration, ServiceBehaviour behaviour) {
-            AmqpService service = new AmqpService(this, addr, behaviour, configuration);
-
-            // setup the service
-            await service.SetupAsync(_broker)
-                .ConfigureAwait(false);
-
-            return service;
-        }
         #endregion
 
         class ReplyObserver : IObserver<InboundMessage>
@@ -590,7 +529,89 @@ namespace Holon.Transports.Amqp
                 //transport = transport;
             }
         }
-   
+
+        #region Broker Setup
+        /// <summary>
+        /// Setup a broker.
+        /// </summary>
+        /// <returns></returns>
+        private async Task SetupBrokerAsync() {
+            // wait for semaphore
+            await _setupBrokerSemaphore.WaitAsync().ConfigureAwait(false);
+
+            try {
+                // check if we still need to setup the broker
+                if (!ShouldSetupBroker())
+                    return;
+
+                // setup the broker
+                _broker = await _brokerContext.CreateBrokerAsync(Node.ApplicationId)
+                    .ConfigureAwait(false);
+
+                // add returned handler
+                _broker.Returned += delegate (object s, BrokerReturnedEventArgs e) {
+                    if (e.ID != Guid.Empty) {
+                        TaskCompletionSource<Envelope> tcs;
+
+                        lock (_replyWaits) {
+                            // try and get the reply wait
+                            if (!_replyWaits.TryGetValue(e.ID, out ReplyWait replyWait))
+                                return;
+
+                            // if this is a multi-reply do nothing
+                            if (replyWait.Results != null)
+                                return;
+
+                            // remove and set exception
+                            tcs = replyWait.CompletionSource;
+                            _replyWaits.Remove(e.ID);
+                        }
+
+                        tcs.TrySetException(new ServiceNotFoundException("The envelope was returned before delivery"));
+                    }
+                };
+
+                // create reply queue
+                try {
+                    // declare queue with unique name
+                    using (RandomNumberGenerator rng = RandomNumberGenerator.Create()) {
+                        // get unique string
+                        byte[] uniqueId = new byte[20];
+                        rng.GetBytes(uniqueId);
+                        string uniqueIdStr = BitConverter.ToString(uniqueId).Replace("-", "").ToLower();
+
+                        // add the reply queue
+                        _replyQueue = await _broker.CreateQueueAsync(string.Format("~reply:{1}%{0}", Node.UUID, uniqueIdStr), false, true, "", "", true, true, new Dictionary<string, object>() {
+                        { "x-expires", (int)TimeSpan.FromMinutes(15).TotalMilliseconds }
+                    }).ConfigureAwait(false);
+
+                        // subscribe to reply queue
+                        _replyQueue.AsObservable().Subscribe(new ReplyObserver(this));
+                    }
+                } catch (Exception ex) {
+                    throw new InvalidOperationException("Failed to create node reply queue", ex);
+                }
+            } finally {
+                _setupBrokerSemaphore.Release();
+            }
+        }
+
+        /// <summary>
+        /// Checks if the transport should setup a new broker, you should call <see cref="SetupBrokerAsync"/> which includes it's own thread safety to ensure only
+        /// broker is created.
+        /// </summary>
+        /// <returns></returns>
+        public bool ShouldSetupBroker() {
+            return _broker == null || _broker.IsClosed;
+        }
+        #endregion
+
+        /// <summary>
+        /// Creates the AMQP transport.
+        /// </summary>
+        public AmqpTransport(Uri endpoint) {
+            _brokerContext = new BrokerContext(endpoint);
+        }
     }
 
     /// <summary>

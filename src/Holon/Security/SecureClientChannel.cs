@@ -460,69 +460,6 @@ namespace Holon.Security
             _serverNonce = null;
             _serverEncryptionKey = null;
         }
-
-        /// <summary>
-        /// Broadcasts the envelope message to the provided service address and waits for a response.
-        /// </summary>
-        /// <param name="message">The message.</param>
-        /// <param name="timeout">The timeout to receive all replies.</param>
-        /// <param name="cancellationToken">The cancellation token.</param>
-        /// <returns></returns>
-        public async Task<Envelope[]> BroadcastAsync(Message message, TimeSpan timeout, CancellationToken cancellationToken = default(CancellationToken)) {
-            // perform handshake if we don't have our key yet or it has expired
-            if (_serverEncryptionKey == null || SecureUtils.HasTimeSlotExpired(_serverEncryptionKeyTimeSlot, false)) {
-#if DEBUG_SECURE
-                Console.WriteLine($"[Secure] InvokeOperation KeyNull: {_serverEncryptionKey == null} Expired: {SecureUtils.HasTimeSlotExpired(_serverEncryptionKeyTimeSlot, false)}");
-#endif
-
-                // perform handshake (partial if required)
-                await HandshakeAsync();
-            }
-
-            // add secure header
-            if (message.Headers == null)
-                message.Headers = new Dictionary<string, string>(StringComparer.CurrentCultureIgnoreCase);
-
-            message.Headers[SecureHeader.HeaderName] = new SecureHeader(SecureHeader.HeaderVersion, SecureMessageType.RequestMessage).ToString();
-            message.Address = _address;
-            message.Body = EncryptBody(message.Body);
-
-            // send the envelope and wait for the response
-            Envelope[] responses = await _node.BroadcastAsync(message, timeout, cancellationToken);
-
-            return responses.Select(response => {
-                if (!response.Headers.ContainsKey(SecureHeader.HeaderName))
-                    throw new InvalidDataException("The secure service sent an invalid response");
-
-                // decode header and take action depending on the response
-                SecureHeader header = new SecureHeader(response.Headers[SecureHeader.HeaderName]);
-
-                try {
-                    if (header.Type == SecureMessageType.RespondMessage) {
-                        using (MemoryStream outputStream = new MemoryStream()) {
-                            // decrypt
-                            using (MemoryStream inputStream = new MemoryStream(response.Data)) {
-                                using (Aes aes = Aes.Create()) {
-                                    aes.Key = _serverEncryptionKey;
-                                    aes.IV = _serverNonce;
-
-                                    using (CryptoStream decryptStream = new CryptoStream(inputStream, aes.CreateDecryptor(), CryptoStreamMode.Read)) {
-                                        decryptStream.CopyTo(outputStream);
-                                    }
-                                }
-                            }
-
-                            //response.Data = outputStream.ToArray();
-                            return response;
-                        }
-                    } else {
-                        return null;
-                    }
-                } catch(Exception) {
-                    return null;
-                }
-            }).Where(e => e != null).ToArray();
-        }
         #endregion
 
         #region Constructors

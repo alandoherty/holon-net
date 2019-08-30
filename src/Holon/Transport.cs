@@ -168,5 +168,11 @@ namespace Holon
             else
                 throw new NotSupportedException("This transport does not support subscriptions");
         }
+
+        /// <summary>
+        /// Called when the <see cref="NodeBuilder"/> has finished building the node, you should include additional setup here. You may start receiving calls to operation methods now, <see cref="Node"/> will also now be defined.
+        /// </summary>
+        internal protected virtual void OnBuild() {
+        }
     }
 }

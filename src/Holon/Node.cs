@@ -86,15 +86,6 @@ namespace Holon
         }
 
         /// <summary>
-        /// Gets the underlying introspection service.
-        /// </summary>
-        public Service QueryService {
-            get {
-                return _queryService;
-            }
-        }
-
-        /// <summary>
         /// Gets the UUID.
         /// </summary>
         public Guid UUID {
@@ -315,87 +306,9 @@ namespace Holon
                 Headers = headers
             }, timeout, cancellationToken);
         }
-
-        /// <summary>
-        /// Broadcasts the message to the provided service address and waits for any responses within the timeout.
-        /// </summary>
-        /// <param name="addr">The service adddress.</param>
-        /// <param name="body">The body.</param>
-        /// <param name="timeout">The timeout to receive all replies.</param>
-        /// <param name="headers">The headers.</param>
-        /// <param name="cancellationToken">The cancellation token.</param>
-        /// <returns></returns>
-        public Task<Envelope[]> BroadcastAsync(ServiceAddress addr, byte[] body, TimeSpan timeout, IDictionary<string, string> headers = null, CancellationToken cancellationToken = default(CancellationToken)) {
-            return BroadcastAsync(new Message() {
-                Address = addr,
-                Body = body,
-                Headers = headers
-            }, timeout, cancellationToken);
-        }
-
-        /// <summary>
-        /// Broadcasts the message to the provided service address and waits for any responses within the timeout.
-        /// </summary>
-        /// <param name="message">The message.</param>
-        /// <param name="timeout">The timeout to receive all replies.</param>
-        /// <param name="cancellationToken">The cancellation token.</param>
-        /// <returns></returns>
-        public Task<Envelope[]> BroadcastAsync(Message message, TimeSpan timeout,CancellationToken cancellationToken = default(CancellationToken)) {
-            //Namespace @namespace = GetNamespace(message.Address.Namespace);
-
-            //return @namespace.BroadcastAsync(message, timeout, cancellationToken);
-            throw new NotImplementedException();
-        }
-
-        /// <summary>
-        /// Broadcasts the message to the provided service address and waits for any responses within the timeout.
-        /// </summary>
-        /// <param name="addr">The service adddress.</param>
-        /// <param name="body">The body.</param>
-        /// <param name="timeout">The timeout.</param>
-        /// <param name="headers">The headers.</param>
-        /// <param name="cancellationToken">The cancellation token.</param>
-        /// <returns></returns>
-        public Task<Envelope[]> BroadcastAsync(string addr, byte[] body, TimeSpan timeout, IDictionary<string, string> headers = null, CancellationToken cancellationToken = default(CancellationToken)) {
-            return BroadcastAsync(new Message() {
-                Address = new ServiceAddress(addr),
-                Body = body,
-                Headers = headers
-            }, timeout, cancellationToken);
-        }
         #endregion
 
         #region Other Methods
-        class observer : IObserver<Event>
-        {
-            public void OnCompleted()
-            {
-                Console.WriteLine("[Event] OnCompleted");
-            }
-
-            public void OnError(Exception error)
-            {
-            }
-
-            public void OnNext(Event value)
-            {
-                Console.WriteLine($"[Event] {value.Address} : {value.Data.ToString()}");
-            }
-        }
-
-        public async void Wow()
-        {
-            Transport t = _transports.First();
-
-            var sub = await t.SubscribeAsync(new EventAddress("device:wow.*"));
-            sub.AsObservable().Subscribe(new observer());
-
-            await t.EmitAsync(new Event[]
-            {
-                new Event(new EventAddress("device:wow.w"), new Dictionary<string, string>(StringComparer.CurrentCultureIgnoreCase), "wow")
-            });
-        }
-
         /*
         /// <summary>
         /// Reconnects the underlying broker.

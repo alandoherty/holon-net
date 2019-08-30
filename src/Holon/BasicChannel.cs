@@ -118,18 +118,6 @@ namespace Holon
             message.Address = _address;
             return _node.SendAsync(message);
         }
-
-        /// <summary>
-        /// Broadcasts the envelope message to the provided service address and waits for a response.
-        /// </summary>
-        /// <param name="message">The message.</param>
-        /// <param name="timeout">The timeout to receive all replies.</param>
-        /// <param name="cancellationToken">The cancellation token.</param>
-        /// <returns></returns>
-        public Task<Envelope[]> BroadcastAsync(Message message, TimeSpan timeout, CancellationToken cancellationToken = default(CancellationToken)) {
-            message.Address = _address;
-            return _node.BroadcastAsync(message, timeout, cancellationToken);
-        }
         #endregion
 
         #region Constructors
