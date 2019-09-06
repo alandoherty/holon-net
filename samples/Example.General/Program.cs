@@ -36,7 +36,7 @@ namespace Example.General
     [RpcContract]
     interface ITest001
     {
-        [RpcOperation(NoReply = true)]
+        [RpcOperation(NoReply = false)]
         Task Login(LoginRequestMsg login);
     }
 
@@ -81,15 +81,15 @@ namespace Example.General
 
             Node node = nodeBuilder.Build();
 
-            ITest001 test = node.Proxy<ITest001>("node:holontest");
+            // attach
+            Service service = await node.AttachAsync("htest:login", ServiceType.Balanced, RpcBehaviour.Bind<ITest001>(new Test001(Guid.NewGuid())));
 
+          
+            ITest001 test = node.Proxy<ITest001>("htest:login");
             await test.Login(new LoginRequestMsg() {
                 Password = "wow",
                 Username = "wow"
             });
-
-            // attach
-            Service service = await node.AttachAsync("auth:login", ServiceType.Balanced, RpcBehaviour.Bind<ITest001>(new Test001(Guid.NewGuid())));
 
             // detaches the service
             await node.DetachAsync(service).ConfigureAwait(false);

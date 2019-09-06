@@ -12,7 +12,7 @@ namespace Holon.Transports.Amqp
     /// <summary>
     /// Provides a AMQP service implementation.
     /// </summary>
-    public sealed class AmqpService : Service
+    public sealed class AmqpService : Service, IObserver<InboundMessage>
     {
         private Broker _broker;
         private BrokerQueue _queue;
@@ -53,7 +53,26 @@ namespace Holon.Transports.Amqp
             }
 
             // begin observing
-            //_queue.AsObservable().Subscribe(this);
+            _queue.AsObservable().Subscribe(this);
+        }
+
+        void IObserver<InboundMessage>.OnCompleted()
+        {
+        }
+
+        void IObserver<InboundMessage>.OnError(Exception error)
+        {
+        }
+
+        async void IObserver<InboundMessage>.OnNext(InboundMessage value)
+        {
+
+
+            // acknowledge the message
+            _broker.Context.QueueWork(() => {
+                _broker.Channel.BasicAck(envelope.Message.DeliveryTag, false);
+                return null;
+            });
         }
 
         internal AmqpService(Transport transport, ServiceAddress addr, ServiceBehaviour behaviour, ServiceConfiguration configuration) : base(transport, addr, behaviour, configuration) {

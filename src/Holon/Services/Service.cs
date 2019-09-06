@@ -13,7 +13,7 @@ namespace Holon.Services
     /// <summary>
     /// Represents an service.
     /// </summary>
-    public abstract class Service : IDisposable, IObserver<Envelope>
+    public abstract class Service : IDisposable
     {
         #region Fields
         private ServiceAddress _addr;
@@ -197,11 +197,12 @@ namespace Holon.Services
         /// Handles a single envelope.
         /// </summary>
         /// <param name="envelope">The envelope.</param>
-        private async void ServiceHandle(Envelope envelope) {
+        private async void ServiceHandle(Envelope envelope)
+        {
             try {
                 // increment pending metric
                 Interlocked.Increment(ref _requestsPending);
-                
+
                 // handle
                 await ServiceHandleAsync(envelope).ConfigureAwait(false);
 
@@ -239,7 +240,8 @@ namespace Holon.Services
         /// Handles a single envelope asyncronously.
         /// </summary>
         /// <param name="envelope">The envelope.</param>
-        private async Task ServiceHandleAsync(Envelope envelope) {
+        private async Task ServiceHandleAsync(Envelope envelope)
+        {
             // process filters, if any handler in the chain returns false we ditch this envelope
             if (_configuration.Filters.Length > 0) {
                 foreach (IServiceFilter filter in _configuration.Filters) {
@@ -258,13 +260,13 @@ namespace Holon.Services
             _transport.Node.OnTraceEnd(new TraceEventArgs(envelope, this));
         }
 
-        void IObserver<Envelope>.OnCompleted() {
-        }
-
-        void IObserver<Envelope>.OnError(Exception error) {
-        }
-
-        async void IObserver<Envelope>.OnNext(Envelope envelope) {
+        /// <summary>
+        /// Queues an incoming envelope, returns a task which completes when the message is handled.
+        /// </summary>
+        /// <param name="envelope"></param>
+        /// <returns></returns>
+        protected async Task QueueAsync(Envelope envelope)
+        {
             // wait for a free request slot, this ensures ServiceConfiguration.MaxConcurrency is kept to
             await _concurrencySlim.WaitAsync().ConfigureAwait(false);
 
@@ -301,12 +303,6 @@ namespace Holon.Services
                 // call exception handler
                 OnUnhandledException(new ServiceExceptionEventArgs(_behaviour, ex));
             }
-
-            // acknowledge
-            /*_broker.Context.QueueWork(() => {
-                _broker.Channel.BasicAck(envelope.Message.DeliveryTag, false);
-                return null;
-            });*/
         }
         #endregion
 

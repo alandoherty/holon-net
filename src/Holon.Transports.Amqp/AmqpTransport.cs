@@ -170,6 +170,10 @@ namespace Holon.Transports.Amqp
         /// <param name="behaviour">The behaviour.</param>
         /// <returns></returns>
         protected override async Task<Service> AttachAsync(ServiceAddress addr, ServiceConfiguration configuration, ServiceBehaviour behaviour) {
+            // setup the broker
+            if (ShouldSetupBroker())
+                await SetupBrokerAsync().ConfigureAwait(false);
+
             AmqpService service = new AmqpService(this, addr, behaviour, configuration);
 
             // setup the service
