@@ -148,7 +148,7 @@ namespace Holon.Remoting
                 }, _configuration.Timeout);
 
                 // transform response
-                byte[] responseBody = res.Data;
+                byte[] responseBody = res.Body;
 
                 // try and get response header
                 if (!res.Headers.TryGetValue(RpcHeader.HEADER_NAME, out string resHeaderData)) {

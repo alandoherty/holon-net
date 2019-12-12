@@ -12,6 +12,11 @@ namespace Holon
     public struct Message
     {
         /// <summary>
+        /// Gets or sets the message ID, if null the identifier will be randomly generated.
+        /// </summary>
+        public string Id { get; set; }
+
+        /// <summary>
         /// Gets or sets the body.
         /// </summary>
         public byte[] Body { get; set; }
@@ -53,6 +58,7 @@ namespace Holon
             Address = address;
             Body = body;
             Headers = headers;
+            Id = null;
         }
 
         /// <summary>

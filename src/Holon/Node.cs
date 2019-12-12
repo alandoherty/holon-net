@@ -6,6 +6,8 @@ using Holon.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -18,6 +20,7 @@ namespace Holon
     {
         #region Fields
         private Guid _uuid;
+        private byte[] _uuidBytes;
 
         private NodeConfiguration _configuration;
 
@@ -39,11 +42,6 @@ namespace Holon
 
         #region Events
         /// <summary>
-        /// Called when a reply is received that is unroutable.
-        /// </summary>
-        public event EventHandler<UnroutableReplyEventArgs> UnroutableReply;
-
-        /// <summary>
         /// Called when a trace begins.
         /// </summary>
         public event EventHandler<TraceEventArgs> TraceBegin;
@@ -52,13 +50,6 @@ namespace Holon
         /// Called when a trace ends.
         /// </summary>
         public event EventHandler<TraceEventArgs> TraceEnd;
-
-        /// <summary>
-        /// </summary>
-        /// <param name="e">The event arguments.</param>
-        internal void OnUnroutableReply(UnroutableReplyEventArgs e) {
-            UnroutableReply?.Invoke(this, e);
-        }
         
         /// <summary>
         /// </summary>
@@ -91,6 +82,9 @@ namespace Holon
         public Guid UUID {
             get {
                 return _uuid;
+            } private set {
+                _uuid = value;
+                _uuidBytes = value.ToByteArray();
             }
         }
 
@@ -133,7 +127,7 @@ namespace Holon
         }
 
         /// <summary>
-        /// Gets the rules.
+        /// Gets the routing rules.
         /// </summary>
         public IEnumerable<RoutingRule> Rules {
             get {
@@ -532,6 +526,32 @@ namespace Holon
         }
 
         /// <summary>
+        /// Generates a random message identifier.
+        /// </summary>
+        /// <returns>A random 40-character message identifier.</returns>
+        public string RandomMessageID()
+        {
+            // create the string builder for the message ID
+            StringBuilder sb = new StringBuilder(40);
+
+            // append the first two bytes of the UUID
+            sb.Append(BitConverter.ToUInt16(_uuidBytes, 0).ToString("x4"));
+
+            // append the first two bytes of the system tick
+            sb.Append(((ushort)Environment.TickCount).ToString("x4"));
+
+            // append 16 random bytes
+            using (RandomNumberGenerator rng = RandomNumberGenerator.Create()) {
+                byte[] randomBytes = new byte[16];
+                rng.GetBytes(randomBytes);
+
+                sb.Append(BitConverter.ToString(randomBytes).Replace("-", "").ToLower());
+            }
+
+            return sb.ToString();
+        }
+
+        /// <summary>
         /// Disposes the node and underlying services.
         /// </summary>
         public void Dispose() {
@@ -769,8 +789,10 @@ namespace Holon
             // apply private members
             _appId = configuration.ApplicationId.ToLower();
             _appVersion = configuration.ApplicationVersion;
-            _uuid = configuration.UUID == Guid.Empty ? Guid.NewGuid() : configuration.UUID;
             _configuration = configuration;
+
+            // set UUID
+            UUID = configuration.UUID == Guid.Empty ? Guid.NewGuid() : configuration.UUID;
         }
         #endregion
     }

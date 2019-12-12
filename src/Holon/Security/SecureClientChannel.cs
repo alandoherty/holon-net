@@ -374,7 +374,7 @@ namespace Holon.Security
             if (header.Type == SecureMessageType.RespondMessage) {
                 using (MemoryStream outputStream = new MemoryStream()) {
                     // decrypt
-                    using (MemoryStream inputStream = new MemoryStream(response.Data)) {
+                    using (MemoryStream inputStream = new MemoryStream(response.Body)) {
                         using (Aes aes = Aes.Create()) {
                             aes.Key = _serverEncryptionKey;
                             aes.IV = _serverNonce;

@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Threading.Tasks.Dataflow;
 
 namespace Holon.Transports.Amqp.Protocol
 {
@@ -19,7 +18,7 @@ namespace Holon.Transports.Amqp.Protocol
         private IConnection _connection;
 
         private Thread _workThread;
-        private BufferBlock<WorkItem> _workQueue = new BufferBlock<WorkItem>();
+        private BlockingCollection<WorkItem> _workQueue = new BlockingCollection<WorkItem>();
         private Uri _endpoint;
         private CancellationTokenSource _workCancel;
         private List<Broker> _brokers = new List<Broker>();
@@ -129,7 +128,7 @@ namespace Holon.Transports.Amqp.Protocol
                 WorkItem item = null;
 
                 try {
-                    item = await _workQueue.ReceiveAsync(_workCancel.Token).ConfigureAwait(false);
+                    item = _workQueue.Take(_workCancel.Token);
 
                     if (item == null)
                         continue;
@@ -158,17 +157,6 @@ namespace Holon.Transports.Amqp.Protocol
                     item.TaskSource.SetResult(o);
                 }
             }
-
-            // receive all remaining items and cancel
-            while (_workQueue.Count > 0) {
-                WorkItem item = await _workQueue.ReceiveAsync().ConfigureAwait(false);
-
-                if (item.TaskSource != null)
-                    item.TaskSource.SetCanceled();
-            }
-
-            // mark as completed
-            _workQueue.Complete();
         }
 
         internal void QueueWork(Func<object> action) {
@@ -183,7 +171,7 @@ namespace Holon.Transports.Amqp.Protocol
             };
 
             // post to work queue
-            _workQueue.Post(workItem);
+            _workQueue.Add(workItem);
         }
 
         internal async Task<object> AskWork(Func<object> action) {
@@ -202,7 +190,7 @@ namespace Holon.Transports.Amqp.Protocol
             };
 
             // post to work queue
-            await _workQueue.SendAsync(workItem).ConfigureAwait(false);
+            _workQueue.Add(workItem);
 
             return await tcs.Task.ConfigureAwait(false);
         }

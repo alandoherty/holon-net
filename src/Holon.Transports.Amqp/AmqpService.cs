@@ -66,13 +66,13 @@ namespace Holon.Transports.Amqp
 
         async void IObserver<InboundMessage>.OnNext(InboundMessage value)
         {
-
+            /*
 
             // acknowledge the message
             _broker.Context.QueueWork(() => {
                 _broker.Channel.BasicAck(envelope.Message.DeliveryTag, false);
                 return null;
-            });
+            });*/
         }
 
         internal AmqpService(Transport transport, ServiceAddress addr, ServiceBehaviour behaviour, ServiceConfiguration configuration) : base(transport, addr, behaviour, configuration) {

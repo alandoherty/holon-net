@@ -75,15 +75,14 @@ namespace Example.General
             // build node
             NodeBuilder nodeBuilder = new NodeBuilder()
                 .AddVirtual("virtual")
-                .AddAmqp(new Uri("amqp://ec2-52-212-222-158.eu-west-1.compute.amazonaws.com"), "amqp")
+                .AddAmqp(new Uri(Environment.GetEnvironmentVariable("AMQP_URI")), "amqp")
                 .AddLambda(new AmazonLambdaClient(Environment.GetEnvironmentVariable("AWS_ACCESS_KEY_ID"), Environment.GetEnvironmentVariable("AWS_SECRET_KEY"), RegionEndpoint.EUWest1), "lambda")
                 .RouteAll("amqp");
 
             Node node = nodeBuilder.Build();
-
+            
             // attach
             Service service = await node.AttachAsync("htest:login", ServiceType.Balanced, RpcBehaviour.Bind<ITest001>(new Test001(Guid.NewGuid())));
-
           
             ITest001 test = node.Proxy<ITest001>("htest:login");
             await test.Login(new LoginRequestMsg() {

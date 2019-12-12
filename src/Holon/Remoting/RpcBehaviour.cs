@@ -76,7 +76,7 @@ namespace Holon.Remoting
                 RpcResponse res = null;
 
                 try {
-                    req = serializer.DeserializeRequest(envelope.Data, (i, o) => RpcArgument.FromMember(GetMember(i, o)));
+                    req = serializer.DeserializeRequest(envelope.Body, (i, o) => RpcArgument.FromMember(GetMember(i, o)));
                 } catch (KeyNotFoundException) {
                     res = new RpcResponse("InterfaceNotFound", "The interface or operation could not be found");
                 } catch(Exception ex) {

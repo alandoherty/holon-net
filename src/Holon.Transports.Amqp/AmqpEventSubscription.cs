@@ -8,7 +8,6 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Threading.Tasks.Dataflow;
 
 namespace Holon.Transports.Amqp
 {
@@ -63,7 +62,7 @@ namespace Holon.Transports.Amqp
             //    throw new NotSupportedException("Event serializer not supported");
 
             // post
-            Event e = serializer.DeserializeEvent(envelope.Data);
+            Event e = serializer.DeserializeEvent(envelope.Body);
 
             return e;
         }

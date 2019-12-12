@@ -11,17 +11,16 @@ using Holon.Metrics.Tracing;
 namespace Holon
 {
     /// <summary>
-    /// Represents a message which has been received.
+    /// Represents an incoming message, contains a <see cref="Message"/> internally with additional data.
     /// </summary>
     public sealed class Envelope
     {
         #region Fields
         private Transport _transport;
         private IReplyChannel _channel;
-        private Dictionary<string, string> _headers;
-        private Guid _id;
+        private string _id;
+        private Message _msg;
         private ServiceAddress _destArr;
-        private byte[] _data;
         #endregion
 
         #region Properties
@@ -39,7 +38,7 @@ namespace Holon
         /// </summary>
         public IReadOnlyDictionary<string, string> Headers {
             get {
-                return _headers ?? new Dictionary<string, string>();
+                return _msg.Headers;
             }
         }
 
@@ -62,9 +61,9 @@ namespace Holon
         }
 
         /// <summary>
-        /// Gets the envelope ID, if any.
+        /// Gets the envelope ID.
         /// </summary>
-        public Guid ID {
+        public string ID {
             get {
                 return _id;
             }
@@ -83,18 +82,18 @@ namespace Holon
         }
 
         /// <summary>
-        /// Gets the data.
+        /// Gets the message body.
         /// </summary>
-        public byte[] Data {
+        public byte[] Body {
             get {
-                return _data;
+                return _msg.Body;
             }
         }
 
         /// <summary>
-        /// Gets or sets the reply channel.
+        /// Gets or sets the reply channel, if any.
         /// </summary>
-        public IReplyChannel Channel {
+        public IReplyChannel ReplyChannel {
             get {
                 return _channel;
             } set {
@@ -114,14 +113,11 @@ namespace Holon
             // validate arguments
             if (body == null)
                 throw new ArgumentNullException(nameof(body), "The body cannot be null");
-            else if (ID == Guid.Empty)
-                throw new InvalidOperationException("The envelope does not have sufficient reply information");
 
             if (_channel != null)
                 return _channel.ReplyAsync(body, headers ?? new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase));
             else
-                throw new NotImplementedException();
-            //return _namespace.ReplyAsync(ReplyTo, ID, body, headers ?? new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase));
+                throw new NotSupportedException();
         }
 
         /// <summary>
@@ -168,7 +164,7 @@ namespace Holon
         /// <param name="encoding">The string encoding.</param>
         /// <returns>The body string.</returns>
         public string AsString(Encoding encoding) {
-            return encoding.GetString(_data);
+            return encoding.GetString(_msg.Body);
         }
         #endregion
 

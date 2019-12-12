@@ -1,6 +1,7 @@
 ﻿using Holon.Events;
 using Holon.Services;
 using Holon.Transports.Amqp.Protocol;
+using RabbitMQ.Client;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -586,8 +587,8 @@ namespace Holon.Transports.Amqp
 
                         // add the reply queue
                         _replyQueue = await _broker.CreateQueueAsync(string.Format("~reply:{1}%{0}", Node.UUID, uniqueIdStr), false, true, "", "", true, true, new Dictionary<string, object>() {
-                        { "x-expires", (int)TimeSpan.FromMinutes(15).TotalMilliseconds }
-                    }).ConfigureAwait(false);
+                            { "x-expires", (int)TimeSpan.FromMinutes(15).TotalMilliseconds }
+                        }).ConfigureAwait(false);
 
                         // subscribe to reply queue
                         _replyQueue.AsObservable().Subscribe(new ReplyObserver(this));
