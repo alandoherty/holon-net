@@ -9,7 +9,7 @@ namespace Holon
     /// <summary>
     /// Represents an outgoing message.
     /// </summary>
-    public struct Message
+    public sealed class Message
     {
         /// <summary>
         /// Gets or sets the message ID, if null the identifier will be randomly generated.
@@ -70,5 +70,10 @@ namespace Holon
         public Message(string address, byte[] body, IDictionary<string, string> headers = null)
             : this(new ServiceAddress(address), body, headers) {
         }
+
+        /// <summary>
+        /// Creates a new empty message.
+        /// </summary>
+        public Message() { }
     }
 }

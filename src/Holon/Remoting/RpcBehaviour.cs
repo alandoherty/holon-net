@@ -106,7 +106,7 @@ namespace Holon.Remoting
                 bool noReply = opAttr != null && opAttr.NoReply;
 
                 // check if they have a response ID if no reply isn't enabled
-                if (!noReply && envelope.ID == Guid.Empty)
+                if (!noReply && envelope.ID == null)
                     res = new RpcResponse("InvalidOperation", "The envelope does not specify a correlation ID");
 
                 // apply request if we don't have a response already, typically an error

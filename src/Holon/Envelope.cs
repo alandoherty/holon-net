@@ -38,7 +38,7 @@ namespace Holon
         /// </summary>
         public IReadOnlyDictionary<string, string> Headers {
             get {
-                return _msg.Headers;
+                return (IReadOnlyDictionary<string,string>)_msg.Headers;
             }
         }
 
@@ -136,7 +136,7 @@ namespace Holon
         /// </summary>
         /// <returns></returns>
         public Stream AsStream() {
-            return new MemoryStream(_data);
+            return new MemoryStream(_msg.Body);
         }
 
         /// <summary>

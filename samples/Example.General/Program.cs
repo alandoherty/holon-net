@@ -71,6 +71,14 @@ namespace Example.General
 
     class Program
     {
+        class TestBehaviour : ServiceBehaviour
+        {
+            public override async Task HandleAsync(Envelope envelope)
+            {
+
+            }
+        }
+
         static async Task Main(string[] args) {
             // build node
             NodeBuilder nodeBuilder = new NodeBuilder()
@@ -80,7 +88,11 @@ namespace Example.General
                 .RouteAll("amqp");
 
             Node node = nodeBuilder.Build();
+
+            // attach
+            Service service = await node.AttachAsync("wow:test", ServiceType.Singleton, new TestBehaviour());
             
+            /*
             // attach
             Service service = await node.AttachAsync("htest:login", ServiceType.Balanced, RpcBehaviour.Bind<ITest001>(new Test001(Guid.NewGuid())));
           
@@ -89,6 +101,7 @@ namespace Example.General
                 Password = "wow",
                 Username = "wow"
             });
+            */
 
             // detaches the service
             await node.DetachAsync(service).ConfigureAwait(false);

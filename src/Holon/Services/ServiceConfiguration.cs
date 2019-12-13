@@ -15,14 +15,9 @@ namespace Holon.Services
         public ServiceType Type { get; set; } = ServiceType.Balanced;
 
         /// <summary>
-        /// Gets or sets the execution.
-        /// </summary>
-        public ServiceExecution Execution { get; set; } = ServiceExecution.Serial;
-
-        /// <summary>
         /// Gets or sets the maximum number of concurrent operations.
         /// </summary>
-        public int MaxConcurrency { get; set; } = 16;
+        public int MaxConcurrency { get; set; } = 1;
 
         /// <summary>
         /// Gets or sets the ordered filters.

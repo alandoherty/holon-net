@@ -30,7 +30,6 @@ namespace Holon.Remoting.Introspection
             return Task.FromResult(_node.Services.Select((s) => new NodeServiceInformation() {
                 Address = s.Address.ToString(),
                 Type = s.Type,
-                Execution = s.Execution,
                 Uptime = (long)(DateTimeOffset.UtcNow - s.TimeSetup).TotalSeconds,
                 RequestsCompleted = s.RequestsCompleted,
                 RequestsFaulted = s.RequestsFaulted,

@@ -24,7 +24,7 @@ namespace Holon.Security
             }
         }
 
-        public Guid ReplyID {
+        public string ReplyID {
             get {
                 return _envelope.ID;
             }

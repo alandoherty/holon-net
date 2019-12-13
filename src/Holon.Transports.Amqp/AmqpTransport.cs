@@ -23,7 +23,7 @@ namespace Holon.Transports.Amqp
         private volatile int _disposed;
 
 
-        private Dictionary<Guid, ReplyWait> _replyWaits = new Dictionary<Guid, ReplyWait>();
+        private Dictionary<string, ReplyWait> _replyWaits = new Dictionary<string, ReplyWait>();
         private Task _replyProcessor;
 
         private List<string> _declaredEventNamespaces = new List<string>();
@@ -123,8 +123,7 @@ namespace Holon.Transports.Amqp
                 await SetupBrokerAsync().ConfigureAwait(false);
 
             // setup receive handler
-            Guid envelopeId = Guid.NewGuid();
-            Task<Envelope> envelopeWait = WaitReplyAsync(envelopeId, timeout, cancellationToken);
+            Task<Envelope> envelopeWait = WaitReplyAsync(message.Id, timeout, cancellationToken);
 
             // add timeout header
             if (message.Headers == null)
@@ -133,7 +132,7 @@ namespace Holon.Transports.Amqp
             message.Headers["x-message-ttl"] = timeout.TotalSeconds.ToString();
 
             // send
-            await _broker.SendAsync(message.Address.Namespace, message.Address.Key, message.Body, message.Headers, _replyQueue.Name, envelopeId.ToString()).ConfigureAwait(false);
+            await _broker.SendAsync(message.Address.Namespace, message.Address.Key, message.Body, message.Headers, _replyQueue.Name, message.Id).ConfigureAwait(false);
 
             // the actual receiver handler is setup since it's syncronous, but now we wait
             return await envelopeWait.ConfigureAwait(false);
@@ -286,7 +285,7 @@ namespace Holon.Transports.Amqp
             Envelope envelope = null;// new Envelope(msg, this);
 
             // check if we have an correlation
-            if (envelope.ID == Guid.Empty)
+            if (envelope.ID == null)
             {
                 // trigger event
                 //_node.OnUnroutableReply(new UnroutableReplyEventArgs(envelope));
@@ -337,7 +336,7 @@ namespace Holon.Transports.Amqp
         /// <param name="timeout">The timeout to receive all replies.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns></returns>
-        internal async Task<Envelope[]> WaitManyReplyAsync(Guid replyId, TimeSpan timeout, CancellationToken cancellationToken = default(CancellationToken))
+        internal async Task<Envelope[]> WaitManyReplyAsync(string replyId, TimeSpan timeout, CancellationToken cancellationToken = default(CancellationToken))
         {
             // create completion source
             TaskCompletionSource<Envelope> tcs = new TaskCompletionSource<Envelope>();
@@ -388,7 +387,7 @@ namespace Holon.Transports.Amqp
         /// <param name="timeout">The timeout.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns></returns>
-        internal async Task<Envelope> WaitReplyAsync(Guid replyId, TimeSpan timeout, CancellationToken cancellationToken = default(CancellationToken))
+        internal async Task<Envelope> WaitReplyAsync(string replyId, TimeSpan timeout, CancellationToken cancellationToken = default(CancellationToken))
         {
             // create completion source
             TaskCompletionSource<Envelope> tcs = new TaskCompletionSource<Envelope>();
@@ -555,7 +554,7 @@ namespace Holon.Transports.Amqp
 
                 // add returned handler
                 _broker.Returned += delegate (object s, BrokerReturnedEventArgs e) {
-                    if (e.ID != Guid.Empty) {
+                    if (e.ID != null) {
                         TaskCompletionSource<Envelope> tcs;
 
                         lock (_replyWaits) {

@@ -26,12 +26,6 @@ namespace Holon.Remoting.Introspection
         public ServiceType Type { get; set; }
 
         /// <summary>
-        /// Gets or sets the execution type.
-        /// </summary>
-        [ProtoMember(3, IsRequired = true)]
-        public ServiceExecution Execution { get; set; }
-
-        /// <summary>
         /// Gets or sets the number of pending requests.
         /// </summary>
         [ProtoMember(4, IsRequired = true)]

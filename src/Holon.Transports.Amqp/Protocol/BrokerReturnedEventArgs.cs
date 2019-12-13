@@ -29,15 +29,13 @@ namespace Holon.Transports.Amqp.Protocol
         /// <summary>
         /// Gets the envelope ID.
         /// </summary>
-        public Guid ID {
+        public string ID {
             get {
                 if (_properties.IsCorrelationIdPresent()) {
-                    if (!Guid.TryParse(_properties.CorrelationId, out Guid id))
-                        return Guid.Empty;
-                    return id;
+                    return _properties.CorrelationId;
                 }
 
-                return Guid.Empty;
+                return null;
             }
         }
 

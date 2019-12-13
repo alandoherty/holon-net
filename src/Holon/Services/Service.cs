@@ -70,15 +70,6 @@ namespace Holon.Services
         }
 
         /// <summary>
-        /// Gets the service execution strategy.
-        /// </summary>
-        public ServiceExecution Execution {
-            get {
-                return _configuration.Execution;
-            }
-        }
-
-        /// <summary>
         /// Gets the service configuration.
         /// </summary>
         protected ServiceConfiguration Configuration {
@@ -272,7 +263,7 @@ namespace Holon.Services
 
             // handle
             try {
-                if (Execution == ServiceExecution.Serial) {
+                if (Configuration.MaxConcurrency == 1) {
                     // increment pending metric
                     Interlocked.Increment(ref _requestsPending);
 

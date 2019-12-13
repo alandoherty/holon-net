@@ -177,6 +177,9 @@ namespace Holon
                 if (msg.Body == null)
                     throw new NullReferenceException("The message body cannot be null");
 
+                // generate a random id if none specified
+                msg.Id = msg.Id ?? RandomMessageID();
+
                 // find a rule which matches this address
                 RoutingResult result = _rules.Select(r => r.Execute(msg.Address))
                     .Where(r => r.Matched)
@@ -254,6 +257,9 @@ namespace Holon
 
             if (message.Body == null)
                 throw new NullReferenceException("The message body cannot be null");
+
+            // generate a random id if none specified
+            message.Id = message.Id ?? RandomMessageID();
 
             // find a rule which matches this address
             RoutingResult result = _rules.Select(r => r.Execute(message.Address))
@@ -374,7 +380,10 @@ namespace Holon
 
             // setup service
             if (_queryService == null) {
-                _queryService = await AttachAsync(string.Format("node:{0}", _uuid), ServiceType.Singleton, ServiceExecution.Parallel, RpcBehaviour.Bind<INodeQuery001>(new NodeQueryImpl(this))).ConfigureAwait(false);
+                _queryService = await AttachAsync(string.Format("node:{0}", _uuid), new ServiceConfiguration() {
+                    Type = ServiceType.Singleton,
+                    MaxConcurrency = 8
+                }, RpcBehaviour.Bind<INodeQuery001>(new NodeQueryImpl(this))).ConfigureAwait(false);
             }
         }
 
@@ -423,39 +432,14 @@ namespace Holon
         /// <summary>
         /// Attaches the service provider to the address.
         /// </summary>
-        /// <param name="addr">The service address.</param>
-        /// <param name="type">The service type.</param>
-        /// <param name="execution">The service execution.</param>
-        /// <param name="behaviour">The service behaviour.</param>
-        /// <returns>The attached service.</returns>
-        public Task<Service> AttachAsync(ServiceAddress addr, ServiceType type, ServiceExecution execution, ServiceBehaviour behaviour) {
-            return AttachAsync(addr, new ServiceConfiguration() {
-                Type = type,
-                Execution = execution
-            }, behaviour);
-        }
-
-        /// <summary>
-        /// Attaches the service provider to the address.
-        /// </summary>
-        /// <param name="addr">The address.</param>
-        /// <param name="type">The service type.</param>
-        /// <param name="execution">The service execution.</param>
-        /// <param name="behaviour">The behaviour.</param>
-        /// <returns>The attached service.</returns>
-        public Task<Service> AttachAsync(string addr, ServiceType type, ServiceExecution execution, ServiceBehaviour behaviour) {
-            return AttachAsync(new ServiceAddress(addr), type, execution, behaviour);
-        }
-
-        /// <summary>
-        /// Attaches the service provider to the address.
-        /// </summary>
         /// <param name="addr">The address.</param>
         /// <param name="type">The service type.</param>
         /// <param name="behaviour">The behaviour.</param>
         /// <returns></returns>
         public Task<Service> AttachAsync(string addr, ServiceType type, ServiceBehaviour behaviour) {
-            return AttachAsync(new ServiceAddress(addr), type, ServiceExecution.Serial, behaviour);
+            return AttachAsync(new ServiceAddress(addr), new ServiceConfiguration() {
+                Type = type
+            }, behaviour);
         }
 
         /// <summary>
@@ -466,7 +450,9 @@ namespace Holon
         /// <param name="behaviour">The behaviour.</param>
         /// <returns></returns>
         public Task<Service> AttachAsync(ServiceAddress addr, ServiceType type, ServiceBehaviour behaviour) {
-            return AttachAsync(addr, type, ServiceExecution.Serial, behaviour);
+            return AttachAsync(addr, new ServiceConfiguration() {
+                Type = type
+            }, behaviour);
         }
 
         /// <summary>
@@ -476,7 +462,7 @@ namespace Holon
         /// <param name="behaviour">The service behaviour.</param>
         /// <returns></returns>
         public Task<Service> AttachAsync(ServiceAddress addr, ServiceBehaviour behaviour) {
-            return AttachAsync(addr, ServiceType.Fanout, ServiceExecution.Serial, behaviour);
+            return AttachAsync(addr, new ServiceConfiguration(), behaviour);
         }
 
         /// <summary>
@@ -486,7 +472,7 @@ namespace Holon
         /// <param name="behaviour">The service behaviour.</param>
         /// <returns></returns>
         public Task<Service> AttachAsync(string addr, ServiceBehaviour behaviour) {
-            return AttachAsync(new ServiceAddress(addr), ServiceType.Fanout, ServiceExecution.Serial, behaviour);
+            return AttachAsync(new ServiceAddress(addr), new ServiceConfiguration(), behaviour);
         }
 
         /// <summary>

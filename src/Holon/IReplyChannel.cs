@@ -21,7 +21,7 @@ namespace Holon
         /// <summary>
         /// Gets the reply ID.
         /// </summary>
-        Guid ReplyID { get; }
+        string ReplyID { get; }
 
         /// <summary>
         /// Gets if this channel is encrypted and can be used for sensitive communications.
